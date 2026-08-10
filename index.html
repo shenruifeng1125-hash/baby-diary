@@ -4,14 +4,27 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>宝宝喂养数据看板</title>
-<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
-<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
-<meta name="theme-color" content="#2563eb">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" id="favicon-link">
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" id="apple-touch-link">
+<meta name="theme-color" content="#2563eb" id="theme-color-meta">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="宝宝喂养">
 <script>
-(function(){var t=localStorage.getItem('theme');if(!t){t=window.matchMedia('(prefers-color-scheme: light)').matches?'light':'dark';}document.documentElement.setAttribute('data-theme',t);})();
+(function(){
+  var t=localStorage.getItem('theme');
+  if(!t){t=window.matchMedia('(prefers-color-scheme: light)').matches?'light':'dark';}
+  document.documentElement.setAttribute('data-theme',t);
+  var favIcon=t==='light'?'/favicon-32x32-light.png':'/favicon-32x32.png';
+  var appleIcon=t==='light'?'/apple-touch-icon-light.png':'/apple-touch-icon-dark.png';
+  var themeColor=t==='light'?'#2563eb':'#0f172a';
+  var f=document.getElementById('favicon-link');
+  if(f)f.href=favIcon;
+  var a=document.getElementById('apple-touch-link');
+  if(a)a.href=appleIcon;
+  var m=document.getElementById('theme-color-meta');
+  if(m)m.content=themeColor;
+})();
 </script>
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
