@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>宝宝喂养数据看板</title>
+<script>
+(function(){var t=localStorage.getItem('theme');if(!t){t=window.matchMedia('(prefers-color-scheme: light)').matches?'light':'dark';}document.documentElement.setAttribute('data-theme',t);})();
+</script>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+:root {
+  --bg: #0f172a; --card: #1e293b; --text: #f8fafc; --muted: #94a3b8; --muted-2: #64748b;
+  --border: #334155; --border-2: #1e293b; --border-3: rgba(30,41,59,0.5);
+  --btn-bg: #334155; --btn-hover: #475569; --btn-active: #2563eb; --btn-active-hover: #3b82f6;
+  --shadow: rgba(0,0,0,0.3); --chart-text: #94a3b8; --chart-border: #334155;
+  --hover-row: rgba(30,41,59,0.5); --timeline-line: #334155; --timeline-dot-border: #0f172a;
+  --accent-orange: #fb923c; --accent-pink: #f472b6; --accent-blue: #60a5fa; --accent-yellow: #facc15; --accent-green: #4ade80;
+  --accent-orange-light: #fdba74; --accent-pink-light: #f9a8d4; --accent-blue-light: #93c5fd; --accent-yellow-light: #fde047; --accent-green-light: #86efac;
+  --accent-amber: #fbbf24; --accent-rose: #fb7185; --accent-teal: #2dd4bf; --accent-red: #f87171; --accent-purple: #c084fc;
+}
+[data-theme="light"] {
+  --bg: #f1f5f9; --card: #ffffff; --text: #1e293b; --muted: #64748b; --muted-2: #94a3b8;
+  --border: #e2e8f0; --border-2: #f1f5f9; --border-3: rgba(241,245,249,0.8);
+  --btn-bg: #f1f5f9; --btn-hover: #e2e8f0; --btn-active: #2563eb; --btn-active-hover: #3b82f6;
+  --shadow: rgba(0,0,0,0.06); --chart-text: #64748b; --chart-border: #e2e8f0;
+  --hover-row: rgba(241,245,249,0.8); --timeline-line: #cbd5e1; --timeline-dot-border: #ffffff;
+  --accent-orange: #ea580c; --accent-pink: #db2777; --accent-blue: #2563eb; --accent-yellow: #ca8a04; --accent-green: #16a34a;
+  --accent-orange-light: #c2410c; --accent-pink-light: #be185d; --accent-blue-light: #1d4ed8; --accent-yellow-light: #a16207; --accent-green-light: #15803d;
+  --accent-amber: #d97706; --accent-rose: #e11d48; --accent-teal: #0d9488; --accent-red: #dc2626; --accent-purple: #9333ea;
+}
+body { background: var(--bg); color: var(--text); transition: background 0.3s, color 0.3s; }
+.card { background: var(--card); border-radius: 16px; box-shadow: 0 4px 6px -1px var(--shadow); transition: background 0.3s; }
+.insight-normal { border-left: 4px solid #22c55e; }
+.insight-warning { border-left: 4px solid #ef4444; }
+.insight-trend-up { border-left: 4px solid #3b82f6; }
+.insight-trend-down { border-left: 4px solid #f59e0b; }
+.tag-normal { background: rgba(34,197,94,0.15); color: #4ade80; border: 1px solid rgba(34,197,94,0.3); }
+.tag-warning { background: rgba(239,68,68,0.15); color: #f87171; border: 1px solid rgba(239,68,68,0.3); }
+.tag-trend-up { background: rgba(59,130,246,0.15); color: #60a5fa; border: 1px solid rgba(59,130,246,0.3); }
+.tag-trend-down { background: rgba(245,158,11,0.15); color: #fbbf24; border: 1px solid rgba(245,158,11,0.3); }
+.timeline-day { position: relative; padding-bottom: 16px; }
+.timeline-day::before { content: ''; position: absolute; left: -22px; top: 20px; bottom: 0; width: 2px; background: var(--timeline-line); }
+.timeline-day:last-child::before { display: none; }
+.timeline-day-dot { position: absolute; left: -28px; top: 6px; width: 16px; height: 16px; border-radius: 50%; border: 3px solid var(--timeline-dot-border); z-index: 1; }
+
+/* Tab buttons */
+.btn-tab { background-color: var(--btn-bg); transition: background-color 0.2s; }
+.btn-tab:hover { background-color: var(--btn-hover); }
+.btn-tab.active { background-color: var(--btn-active); }
+.btn-tab.active:hover { background-color: var(--btn-active-hover); }
+
+/* Theme toggle */
+.theme-toggle { background: var(--btn-bg); transition: background 0.2s; }
+.theme-toggle:hover { background: var(--btn-hover); }
+
+/* Light mode overrides for Tailwind utilities */
+[data-theme="light"] .text-gray-300 { color: #475569 !important; }
+[data-theme="light"] .text-gray-400 { color: var(--muted) !important; }
+[data-theme="light"] .text-gray-500 { color: var(--muted-2) !important; }
+[data-theme="light"] .text-gray-600 { color: #cbd5e1 !important; }
+[data-theme="light"] .text-orange-300 { color: var(--accent-orange-light) !important; }
+[data-theme="light"] .text-pink-300 { color: var(--accent-pink-light) !important; }
+[data-theme="light"] .text-blue-300 { color: var(--accent-blue-light) !important; }
+[data-theme="light"] .text-yellow-300 { color: var(--accent-yellow-light) !important; }
+[data-theme="light"] .text-green-300 { color: var(--accent-green-light) !important; }
+[data-theme="light"] .border-slate-700 { border-color: var(--border) !important; }
+[data-theme="light"] .border-slate-800 { border-color: var(--border-2) !important; }
+[data-theme="light"] .border-slate-800\/50 { border-color: var(--border-3) !important; }
+[data-theme="light"] .hover\:bg-slate-800\/50:hover { background-color: var(--hover-row) !important; }
+</style>
+</head>
+<body class="min-h-screen p-4 md:p-8">
+<div class="max-w-7xl mx-auto space-y-6">
+  <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+    <div>
+      <h1 class="text-3xl font-bold">宝宝喂养数据看板</h1>
+      <p class="text-gray-400 mt-1">从美柚 App 视频提取 · 第 8 天至第 65 天 · 共 58 天记录</p>
+    </div>
+    <div class="flex gap-2 items-center">
+      <button onclick="toggleTheme()" class="theme-toggle px-3 py-2 rounded-lg transition text-sm font-medium" id="themeBtn" title="切换日间/夜间模式">🌙</button>
+      <button onclick="switchView('overview')" id="btn-overview" class="btn-tab active px-4 py-2 rounded-lg transition text-sm font-medium text-white">总览</button>
+      <button onclick="switchView('daily')" id="btn-daily" class="btn-tab px-4 py-2 rounded-lg transition text-sm font-medium">每日时间轴</button>
+      <button onclick="switchView('events')" id="btn-events" class="btn-tab px-4 py-2 rounded-lg transition text-sm font-medium">事件记录</button>
+    </div>
+  </div>
+
+  <div id="view-overview" class="space-y-6">
+    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+      <div class="card p-4"><div class="text-sm text-gray-400">总记录天数</div><div class="text-2xl font-bold text-blue-400">58</div><div class="text-xs text-gray-500 mt-1">第8天 - 第65天</div></div>
+      <div class="card p-4"><div class="text-sm text-gray-400">配方奶总量</div><div class="text-2xl font-bold text-orange-400">33121</div><div class="text-xs text-gray-500 mt-1">毫升</div><div class="text-sm font-semibold text-orange-300 mt-1">≈ 6.2 罐奶粉</div></div>
+      <div class="card p-4"><div class="text-sm text-gray-400">瓶喂母乳总量</div><div class="text-2xl font-bold text-pink-400">8697</div><div class="text-xs text-gray-500 mt-1">毫升 · 198次 · 均44ml/次</div><div class="text-sm font-semibold text-pink-300 mt-1">≈ 1.6 罐奶粉</div></div>
+      <div class="card p-4"><div class="text-sm text-gray-400">母乳亲喂总时长</div><div class="text-2xl font-bold text-blue-400">80.5</div><div class="text-xs text-gray-500 mt-1">小时 · 355次 · 均14min/次</div><div class="text-sm font-semibold text-blue-300 mt-1">≈ 2.9 罐奶粉（估）</div></div>
+      <div class="card p-4"><div class="text-sm text-gray-400">换尿布总次数</div><div class="text-2xl font-bold text-yellow-400">267</div><div class="text-xs text-gray-500 mt-1">次</div><div class="text-sm font-semibold text-yellow-300 mt-1">≈ 6.7米高 · 约2.2层楼</div></div>
+      <div class="card p-4"><div class="text-sm text-gray-400">营养补剂总次数</div><div class="text-2xl font-bold text-green-400">47</div><div class="text-xs text-gray-500 mt-1">次</div><div class="mt-1"><div class="text-sm font-semibold text-green-300 mt-0.5">维生素D 8次·8粒</div>
+<div class="text-sm font-semibold text-green-300 mt-0.5">维生素D3 4次·4粒</div>
+<div class="text-sm font-semibold text-green-300 mt-0.5">维生素K1 2次·2粒</div>
+<div class="text-sm font-semibold text-green-300 mt-0.5">益生菌 1次·0.5袋</div></div></div>
+    </div>
+
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div class="card p-4 text-center border-t-4 border-blue-500">
+        <div class="text-sm text-gray-400">近7日日均奶量</div>
+        <div class="text-2xl font-bold">646.4 <span class="text-sm font-normal text-gray-500">ml</span></div>
+        <div class="text-xs text-gray-500 mt-1">前7日均 771.4 ml</div>
+        <div class="text-sm font-bold mt-1 text-rose-400">↓ -16.2%</div>
+      </div>
+      <div class="card p-4 text-center border-t-4 border-blue-400">
+        <div class="text-sm text-gray-400">近7日日均亲喂</div>
+        <div class="text-2xl font-bold">47.0 <span class="text-sm font-normal text-gray-500">min</span></div>
+        <div class="text-xs text-gray-500 mt-1">前7日均 39.4 min</div>
+        <div class="text-sm font-bold mt-1 text-emerald-400">↑ 19.2%</div>
+      </div>
+      <div class="card p-4 text-center border-t-4 border-yellow-400">
+        <div class="text-sm text-gray-400">近7日日均换尿布</div>
+        <div class="text-2xl font-bold">6.0 <span class="text-sm font-normal text-gray-500">次</span></div>
+        <div class="text-xs text-gray-500 mt-1">前7日均 5.0 次</div>
+        <div class="text-sm font-bold mt-1 text-emerald-400">↑ 20.0%</div>
+      </div>
+      <div class="card p-4 text-center border-t-4 border-green-500">
+        <div class="text-sm text-gray-400">日均补剂</div>
+        <div class="text-2xl font-bold">0.8 <span class="text-sm font-normal text-gray-500">次</span></div>
+      </div>
+    </div>
+
+    <!-- Pie chart: feeding source breakdown -->
+    <div class="card p-5">
+      <h2 class="text-lg font-semibold mb-4">📊 喂养来源占比</h2>
+      <div class="flex flex-col lg:flex-row items-center gap-6">
+        <div style="max-width: 340px; min-width: 280px; flex-shrink: 0;">
+          <canvas id="pieChart"></canvas>
+        </div>
+        <div class="flex-1 w-full">
+          <div id="pieLegend" class="space-y-3"></div>
+          <p class="text-xs text-gray-500 mt-4">母乳亲喂按瓶喂均量估算为毫升数 · 辅食暂无数据（0ml时不显示）</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Historical records -->
+    <div>
+      <h2 class="text-lg font-semibold mb-3">🏅 历史之最</h2>
+      <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+      <div class="card p-4 flex items-center gap-3">
+        <div class="text-2xl">🏆</div>
+        <div>
+          <div class="text-xs text-gray-400">喝奶最多</div>
+          <div class="text-lg font-bold text-orange-400">1230 ml</div>
+          <div class="text-xs text-gray-500">第54天 · 07-28</div>
+        </div>
+      </div>
+      <div class="card p-4 flex items-center gap-3">
+        <div class="text-2xl">📉</div>
+        <div>
+          <div class="text-xs text-gray-400">喝奶最少</div>
+          <div class="text-lg font-bold text-blue-400">125 ml</div>
+          <div class="text-xs text-gray-500">第8天 · 06-12</div>
+        </div>
+      </div>
+      <div class="card p-4 flex items-center gap-3">
+        <div class="text-2xl">🤱</div>
+        <div>
+          <div class="text-xs text-gray-400">最长亲喂</div>
+          <div class="text-lg font-bold text-blue-300">49 分钟</div>
+          <div class="text-xs text-gray-500">第15天 · 06-19</div>
+        </div>
+      </div>
+      <div class="card p-4 flex items-center gap-3">
+        <div class="text-2xl">👶</div>
+        <div>
+          <div class="text-xs text-gray-400">换尿布最多</div>
+          <div class="text-lg font-bold text-yellow-400">10 次</div>
+          <div class="text-xs text-gray-500">第33天 · 07-07</div>
+        </div>
+      </div>
+      <div class="card p-4 flex items-center gap-3">
+        <div class="text-2xl">💩</div>
+        <div>
+          <div class="text-xs text-gray-400">单周拉粑粑最多</div>
+          <div class="text-lg font-bold text-amber-400">4 次</div>
+          <div class="text-xs text-gray-500">第8周</div>
+        </div>
+      </div>
+      <div class="card p-4 flex items-center gap-3">
+        <div class="text-2xl">⏳</div>
+        <div>
+          <div class="text-xs text-gray-400">最长没拉粑粑</div>
+          <div class="text-lg font-bold text-rose-400">至 07-06</div>
+          <div class="text-xs text-gray-500">连续 6 天</div>
+        </div>
+      </div>
+      </div>
+    </div>
+
+
+    <!-- 5 key trend charts -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div class="card p-5"><h2 class="text-lg font-semibold mb-4">🍼 每日配方奶量</h2><canvas id="formulaChart"></canvas></div>
+      <div class="card p-5"><h2 class="text-lg font-semibold mb-4">🥛 每日瓶喂母乳量</h2><canvas id="bottleChart"></canvas></div>
+      <div class="card p-5"><h2 class="text-lg font-semibold mb-4">🤱 每日母乳亲喂时长</h2><canvas id="breastChart"></canvas></div>
+      <div class="card p-5"><h2 class="text-lg font-semibold mb-4">👶 每日换尿布次数</h2><canvas id="diaperChart"></canvas></div>
+      <div class="card p-5"><h2 class="text-lg font-semibold mb-4">💊 每日营养补剂</h2><canvas id="supplementChart"></canvas></div>
+    </div>
+
+    <!-- Weekly average charts -->
+    <div class="card p-5">
+      <h2 class="text-lg font-semibold mb-1">📊 每周日均趋势</h2>
+      <p class="text-sm text-gray-400 mb-4">按自然周聚合，展示各周日均数据的变化趋势</p>
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div><h3 class="text-sm font-medium text-gray-300 mb-2">🍼 配方奶周均（ml/天）</h3><canvas id="weekFormulaChart"></canvas></div>
+        <div><h3 class="text-sm font-medium text-gray-300 mb-2">🥛 瓶喂母乳周均（ml/天）</h3><canvas id="weekBottleChart"></canvas></div>
+        <div><h3 class="text-sm font-medium text-gray-300 mb-2">🤱 母乳亲喂周均（min/天）</h3><canvas id="weekBreastChart"></canvas></div>
+        <div><h3 class="text-sm font-medium text-gray-300 mb-2">👶 换尿布周均（次/天）</h3><canvas id="weekDiaperChart"></canvas></div>
+        <div><h3 class="text-sm font-medium text-gray-300 mb-2">💊 营养补剂周均（次/天）</h3><canvas id="weekSupplementChart"></canvas></div>
+      </div>
+    </div>
+
+    <div class="card p-5">
+      <h2 class="text-lg font-semibold mb-4">每周统计明细</h2>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead><tr class="text-gray-400 border-b border-slate-700"><th class="text-left py-2">周</th><th class="text-right py-2">天数</th><th class="text-right py-2">日均配方奶</th><th class="text-right py-2">日均瓶喂母乳</th><th class="text-right py-2">日均总奶量</th><th class="text-right py-2">日均亲喂</th><th class="text-right py-2">日均尿布</th><th class="text-right py-2">日均补剂</th></tr></thead>
+          <tbody id="weekTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div id="view-daily" class="hidden space-y-6">
+    <div class="card p-5">
+      <h2 class="text-lg font-semibold mb-4">每日时间轴</h2>
+      <p class="text-sm text-gray-400 mb-4">按天展示所有喂养、睡眠、护理事件的时间分布</p>
+      <div id="timelineContainer" class="space-y-2 max-h-[2400px] overflow-y-auto pr-2"></div>
+    </div>
+  </div>
+
+  <div id="view-events" class="hidden space-y-6">
+    <div class="card p-5">
+      <h2 class="text-lg font-semibold mb-4">事件记录（视频识别提取，部分事件可能缺失）</h2>
+      <div class="space-y-4" id="eventsList"></div>
+    </div>
+  </div>
+
+  <!-- AI 数据解读 (放在尾部) -->
+    <div class="space-y-3">
+    <div class="flex items-center gap-2">
+      <h2 class="text-lg font-semibold">🤖 AI 数据解读</h2>
+      <span class="text-xs text-gray-500">基于近7天 vs 前7天对比分析</span>
+    </div>
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div class="card p-4 insight-warning">
+        <div class="flex items-start justify-between mb-2">
+          <div class="flex items-center gap-2">
+            <span class="text-lg">🍼</span>
+            <span class="font-medium">奶量摄入</span>
+          </div>
+          <span class="text-xs px-2 py-0.5 rounded-full tag-warning">需关注</span>
+        </div>
+        <p class="text-sm text-gray-300 leading-relaxed">近7天日均奶量 646ml，较上周下降 16.2%。奶量明显下降，建议关注宝宝是否有不适或厌奶期。</p>
+      </div>      <div class="card p-4 insight-normal">
+        <div class="flex items-start justify-between mb-2">
+          <div class="flex items-center gap-2">
+            <span class="text-lg">🤱</span>
+            <span class="font-medium">母乳亲喂</span>
+          </div>
+          <span class="text-xs px-2 py-0.5 rounded-full tag-normal">稳定</span>
+        </div>
+        <p class="text-sm text-gray-300 leading-relaxed">近7天日均亲喂 47分钟，较上周 +15.0%，基本稳定。</p>
+      </div>      <div class="card p-4 insight-normal">
+        <div class="flex items-start justify-between mb-2">
+          <div class="flex items-center gap-2">
+            <span class="text-lg">👶</span>
+            <span class="font-medium">排泄情况</span>
+          </div>
+          <span class="text-xs px-2 py-0.5 rounded-full tag-normal">正常</span>
+        </div>
+        <p class="text-sm text-gray-300 leading-relaxed">近7天日均换尿布 6.0 次，处于正常范围（6-10次/天）。排泄规律良好。</p>
+      </div>      <div class="card p-4 insight-trend_up">
+        <div class="flex items-start justify-between mb-2">
+          <div class="flex items-center gap-2">
+            <span class="text-lg">📈</span>
+            <span class="font-medium">成长趋势</span>
+          </div>
+          <span class="text-xs px-2 py-0.5 rounded-full tag-trend_up">成长趋势</span>
+        </div>
+        <p class="text-sm text-gray-300 leading-relaxed">从记录初期到现在，日均奶量从 373ml 增长到 646ml（+73.3%）。宝宝奶量增长显著，生长势头良好。</p>
+      </div>      <div class="card p-4 insight-normal">
+        <div class="flex items-start justify-between mb-2">
+          <div class="flex items-center gap-2">
+            <span class="text-lg">🍼</span>
+            <span class="font-medium">喂养模式</span>
+          </div>
+          <span class="text-xs px-2 py-0.5 rounded-full tag-normal">以配方奶为主</span>
+        </div>
+        <p class="text-sm text-gray-300 leading-relaxed">近7天配方奶占比 82%，瓶喂母乳 18%，日均亲喂 47分钟。混合喂养中配方奶为主。</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="text-center text-xs text-gray-500 py-4">数据来源于美柚 App 录屏，经 OCR 自动提取。如有偏差请以 App 内数据为准。</div>
+</div>
+
+<script>
+const days = [{"date": "2026-06-12", "label": "6月12日", "day_num": 8, "formula_count": 3, "formula_amount": 125, "bottle_breast_count": 0, "bottle_breast_amount": 0, "breast_count": 9, "breast_duration_min": 60, "sleep_count": 0, "sleep_duration_min": 0, "diaper_count": 3, "supplement_count": 0, "other_count": 0, "other_duration_min": 0, "tummy_count": 0, "tummy_duration_min": 0, "bath_count": 0, "bath_duration_min": 0, "events": [{"time": "00:05", "raw": "换尿布 Mil                ,", "type": "diaper", "detail": ""}, {"time": "00:05", "raw": "母乳    右9分钟*左29分钟", "type": "breast", "right_min": 9, "start": "00:05", "end": "00:51"}, {"time": "00:58", "raw": "换尿布", "type": "diaper", "detail": ""}, {"time": "03:51", "raw": "换尿布 R右+M BE. M右F", "type": "diaper", "detail": "R右 M右F"}, {"time": "03:53", "raw": "母乳    右15分钟 *左19分钟", "type": "breast", "right_min": 15, "start": "03:53", "end": "04:28"}, {"time": "04:34", "raw": "母乳       分钟“右5分钟", "type": "breast", "right_min": 5}, {"time": "21:21", "raw": "换尿布 R右RE. Mili         j", "type": "diaper", "detail": "R右RE"}, {"time": "21:29", "raw": "母乳   右14分钟*左11分钟", "type": "breast", "right_min": 14}, {"time": "22:02", "raw": "母乳    左6分钟", "type": "breast", "left_min": 6}, {"time": "22:13", "raw": "B 配方奶 50ml", "type": "formula", "amount": 50}], "total_milk_ml": 125, "breast_duration_h": 1.0, "sleep_duration_h": 0}, {"date": "2026-06-13", "label": "6月13日", "day_num": 9, "formula_count": 8, "formula_amount": 420, "bottle_breast_count": 0, "bottle_breast_amount": 0, "breast_count": 13, "breast_duration_min": 180, "sleep_count": 0, "sleep_duration_min": 0, "diaper_count": 8, "supplement_count": 0, "other_count": 0, "other_duration_min": 0, "tummy_count": 0, "tummy_duration_min": 0, "bath_count": 0, "bath_duration_min": 0, "events": [{"time": "00:13", "raw": "换尿布 “”咕咕", "type": "diaper", "detail": "“”咕咕"}, {"time": "00:14", "raw": "母乳   右27分钟", "type": "breast", "right_min": 27, "start": "00:14", "end": "00:41"}, {"time": "00:43", "raw": "母乳    左10 分钟", "type": "breast", "left_min": 10, "start": "00:43", "end": "00:53"}, {"time": "00:56", "raw": "B 配方奶 60ml", "type": "formula", "amount": 60}, {"time": "04:30", "raw": "母乳    左7分钟", "type": "breast", "left_min": 7}, {"time": "19:42", "raw": "母乳    左6分钟       r }", "type": "breast", "left_min": 6}, {"time": "20:15", "raw": "母乳    右9分钟", "type": "breast", "right_min": 9}, {"time": "20:48", "raw": "§ 配方奶 60ml", "type": "formula", "amount": 60}, {"time": "23:58", "raw": "母乳    左13分钟            j", "type": "breast", "left_min": 13}], "total_milk_ml": 420, "breast_duration_h": 3.0, "sleep_duration_h": 0}, {"date": "2026-06-14", "label": "6月14日", "day_num": 10, "formula_count": 7, "formula_amount": 400, "bottle_breast_count": 0, "bottle_breast_amount": 0, "breast_count": 15, "breast_duration_min": 180, "sleep_count": 0, "sleep_duration_min": 0, "diaper_count": 8, "supplement_count": 2, "other_count": 0, "other_duration_min": 0, "tummy_count": 0, "tummy_duration_min": 0, "bath_count": 1, "bath_duration_min": 10, "events": [{"time": "00:53", "raw": "换尿布", "type": "diaper", "detail": ""}, {"time": "00:53", "raw": "母乳    左11分钟", "type": "breast", "left_min": 11, "start": "00:53", "end": "01:05"}, {"time": "05:24", "raw": "换尿布", "type": "diaper", "detail": ""}, {"time": "20:39", "raw": "母乳    左15 分钟", "type": "breast", "left_min": 15}, {"time": "20:39", "raw": "换尿布", "type": "diaper", "detail": ""}, {"time": "21:05", "raw": "母乳    右18分钟", "type": "breast", "right_min": 18}, {"time": "21:38", "raw": "换尿布 B右BE. Wil         ,", "type": "diaper", "detail": "B右BE"}], "total_milk_ml": 400, "breast_duration_h": 3.0, "sleep_duration_h": 0}, {"date": "2026-06-15", "label": "6月15日", "day_num": 11, "formula_count": 6, "formula_amount": 301, "bottle_breast_count": 0, "bottle_breast_amount": 0, "breast_count": 10, "breast_duration_min": 120, "sleep_count": 0, "sleep_duration_min": 0, "diaper_count": 6, "supplement_count": 0, "other_count": 0, "other_duration_min": 0, "tummy_count": 0, "tummy_duration_min": 0, "bath_count": 0, "bath_duration_min": 0, "events": [{"time": "00:36", "raw": "换尿布 hile", "type": "diaper", "detail": ""}, {"time": "00:36", "raw": "§ 配方奶 60ml          @", "type": "formula", "amount": 60}, {"time": "05:15", "raw": "母乳   右12分钟", "type": "breast", "right_min": 12, "start": "05:15", "end": "05:36"}, {"time": "05:15", "raw": "换尿布 Mz", "type": "diaper", "detail": ""}, {"time": "07:10", "raw": "O@ 营养补剂 益生菌 0.5袋", "type": "supplement", "detail": "益生菌 0.5袋"}, {"time": "07:33", "raw": "配方奶 40ml", "type": "formula", "amount": 40, "start": "07:33", "end": "07:34"}, {"time": "12:23", "raw": "母乳    右17分钟", "type": "breast", "right_min": 17}, {"time": "12:43", "raw": "母乳    左4分钟", "type": "breast", "left_min": 4}, {"time": "16:11", "raw": "换尿布 Nl", "type": "diaper", "detail": ""}, {"time": "18:28", "raw": "B 配方奶 40ml", "type": "formula", "amount": 40}, {"time": "19:30", "raw": "换尿布     +e 黄色、奶办有", "type": "diaper", "detail": "黄色、奶办有"}], "total_milk_ml": 301, "breast_duration_h": 2.0, "sleep_duration_h": 0}, {"date": "2026-06-16", "label": "6月16日", "day_num": 12, "formula_count": 6, "formula_amount": 320, "bottle_breast_count": 1, "bottle_breast_amount": 40, "breast_count": 4, "breast_duration_min": 60, "sleep_count": 0, "sleep_duration_min": 0, "diaper_count": 8, "supplement_count": 2, "other_count": 0, "other_duration_min": 0, "tummy_count": 0, "tummy_duration_min": 0, "bath_count": 0, "bath_duration_min": 0, "events": [{"time": "00:45", "raw": "换尿布 “”咕咕", "type": "diaper", "detail": "“”咕咕"}, {"time": "00:49", "raw": "母乳    右14分钟*左17分铀", "type": "breast", "right_min": 14, "start": "00:49", "end": "01:22     @"}, {"time": "01:27", "raw": "换尿布 R右RE. Mili", "type": "diaper", "detail": "R右RE"}, {"time": "01:40", "raw": "瓶喂母乳 40ml", "type": "bottle_breast", "amount": 40, "start": "01:40", "end": "01:40"}, {"time": "01:46", "raw": "B 配方奶 30ml          Insta360", "type": "formula", "amount": 30, "start": "01:46", "end": "01:47"}, {"time": "05:02", "raw": "母乳    左12分钟", "type": "breast", "left_min": 12, "start": "05:02", "end": "05:14"}, {"time": "05:25", "raw": "母乳    右21分钟", "type": "breast", "right_min": 21, "start": "05:25", "end": "05:46"}, {"time": "05:46", "raw": "换尿布 RR+EE 黄色、奶办有", "type": "diaper", "detail": "黄色、奶办有"}, {"time": "19:29", "raw": "° @ 换尿布", "type": "diaper", "detail": ""}, {"time": "19:57", "raw": "换尿布", "type": "diaper", "detail": ""}, {"time": "20:04", "raw": "换尿布", "type": "diaper", "detail": ""}, {"time": "20:31", "raw": "§ 配方奶 60ml", "type": "formula", "amount": 60}], "total_milk_ml": 360, "breast_duration_h": 1.0, "sleep_duration_h": 0}, {"date": "2026-06-17", "label": "6月17日", "day_num": 13, "formula_count": 6, "formula_amount": 260, "bottle_breast_count": 7, "bottle_breast_amount": 210, "breast_count": 9, "breast_duration_min": 120, "sleep_count": 0, "sleep_duration_min": 0, "diaper_count": 7, "supplement_count": 1, "other_count": 0, "other_duration_min": 0, "tummy_count": 0, "tummy_duration_min": 0, "bath_count": 0, "bath_duration_min": 0, "events": [{"time": "01:00", "raw": "母乳   左17分钟", "type": "breast", "left_min": 17, "start": "01:00", "end": "01:17"}, {"time": "01:21", "raw": "瓶喂母乳 30ml", "type": "bottle_breast", "amount": 30, "start": "01:21", "end": "01:22"}, {"time": "01:25", "raw": "冒 配方奶 50ml", "type": "formula", "amount": 50, "start": "01:25", "end": "01:30"}, {"time": "05:40", "raw": "母乳    左27分钟", "type": "breast", "left_min": 27, "start": "05:40", "end": "06:08"}, {"time": "06:05", "raw": "瓶喂母乳 20ml", "type": "bottle_breast", "amount": 20, "start": "06:05", "end": "06:05"}, {"time": "17:49", "raw": "®@ 瓶喂母乳 20ml", "type": "bottle_breast", "amount": 20}, {"time": "18:01", "raw": "营养补剂 维生素右D 1粒   e", "type": "supplement", "detail": "维生素右D 1粒   e"}, {"time": "21:06", "raw": "母乳   右10 分钟", "type": "breast", "right_min": 10}, {"time": "21:10", "raw": "换尿布 IRIE         @", "type": "diaper", "detail": ""}, {"time": "21:29", "raw": "®@ 瓶喂母乳 30ml", "type": "bottle_breast", "amount": 30}, {"time": "21:34", "raw": "§ 配方奶 50ml", "type": "formula", "amount": 50}], "total_milk_ml": 470, "breast_duration_h": 2.0, "sleep_duration_h": 0}, {"date": "2026-06-18", "label": "6月18日", "day_num": 14, "formula_count": 7, "formula_amount": 380, "bottle_breast_count": 6, "bottle_breast_amount": 155, "breast_count": 7, "breast_duration_min": 120, "sleep_count": 0, "sleep_duration_min": 0, "diaper_count": 4, "supplement_count": 0, "other_count": 0, "other_duration_min": 0, "tummy_count": 0, "tummy_duration_min": 0, "bath_count": 0, "bath_duration_min": 0, "events": [{"time": "00:55", "raw": "换尿布 Walk            Insta360", "type": "diaper", "detail": "Insta360"}, {"time": "01:29", "raw": "® 瓶喂母乳 40ml", "type": "bottle_breast", "amount": 40}, {"time": "03:34", "raw": "母乳    左13 分钟", "type": "breast", "left_min": 13, "start": "03:34", "end": "03:45"}, {"time": "18:11", "raw": "母乳    左8分钟 右2分钟", "type": "breast", "left_min": 8, "right_min": 2}, {"time": "18:24", "raw": "瓶喂母乳 20ml", "type": "bottle_breast", "amount": 20}, {"time": "18:40", "raw": "换尿布 “”臭臭+咕咕 SE. Milk    攻", "type": "diaper", "detail": "“”臭臭 咕咕 攻"}, {"time": "19:48", "raw": "母乳    左18分钟“右2分名 e@", "type": "breast", "left_min": 18, "right_min": 2}, {"time": "20:51", "raw": "§ 配方奶 70ml", "type": "formula", "amount": 70}], "total_milk_ml": 535, "breast_duration_h": 2.0, "sleep_duration_h": 0}, {"date": "2026-06-19", "label": "6月19日", "day_num": 15, "formula_count": 5, "formula_amount": 250, "bottle_breast_count": 5, "bottle_breast_amount": 170, "breast_count": 4, "breast_duration_min": 60, "sleep_count": 0, "sleep_duration_min": 0, "diaper_count": 4, "supplement_count": 0, "other_count": 0, "other_duration_min": 0, "tummy_count": 0, "tummy_duration_min": 0, "bath_count": 0, "bath_duration_min": 0, "events": [{"time": "02:30", "raw": "母乳    左24分钟 右25分钟    攻", "type": "breast", "left_min": 24, "right_min": 25, "start": "02:30", "end": "02:30"}, {"time": "02:40", "raw": "换尿布 ik", "type": "diaper", "detail": ""}, {"time": "02:49", "raw": "§ 配方奶 60ml", "type": "formula", "amount": 60, "start": "02:49", "end": "02:49"}, {"time": "05:31", "raw": "换尿布 R右+ME BE. M右R", "type": "diaper", "detail": "R右 M右R"}, {"time": "09:08", "raw": "换尿布 ev", "type": "diaper", "detail": ""}, {"time": "15:30", "raw": "冒 配方奶 70ml", "type": "formula", "amount": 70}, {"time": "17:32", "raw": "®@ 瓶喂母乳 30ml", "type": "bottle_breast", "amount": 30}, {"time": "18:02", "raw": "换尿布 R右+IE BE. Ht", "type": "diaper", "detail": "R右"}, {"time": "19:02", "raw": "B 配方奶 30ml         @", "type": "formula", "amount": 30}], "total_milk_ml": 420, "breast_duration_h": 1.0, "sleep_duration_h": 0}, {"date": "2026-06-20", "label": "6月20日", "day_num": 16, "formula_count": 7, "formula_amount": 380, "bottle_breast_count": 3, "bottle_breast_amount": 120, "breast_count": 9, "breast_duration_min": 120, "sleep_count": 0, "sleep_duration_min": 0, "diaper_count": 5, "supplement_count": 0, "other_count": 0, "other_duration_min": 0, "tummy_count": 0, "tummy_duration_min": 0, "bath_count": 0, "bath_duration_min": 0, "events": [{"time": "00:03", "raw": "换尿布", "type": "diaper", "detail": ""}, {"time": "00:05", "raw": "瓶喂母乳 20ml", "type": "bottle_breast", "amount": 20, "start": "00:05", "end": "00:05"}, {"time": "00:08", "raw": "®@ 瓶喂母乳 60ml", "type": "bottle_breast", "amount": 60, "start": "00:08", "end": "00:15"}, {"time": "02:34", "raw": "母乳    左20分钟", "type": "breast", "left_min": 20}, {"time": "04:21", "raw": "® 瓶喂母乳 30ml", "type": "bottle_breast", "amount": 30, "start": "04:21", "end": "04:22"}, {"time": "06:40", "raw": "换尿布 ”咕咕", "type": "diaper", "detail": "”咕咕"}, {"time": "15:50", "raw": "冒 配方奶 60ml", "type": "formula", "amount": 60}, {"time": "18:15", "raw": "母乳    左8分钟 *右11分钟", "type": "breast", "left_min": 8, "right_min": 11}, {"time": "18:40", "raw": "® 瓶喂母乳 40ml", "type": "bottle_breast", "amount": 40}, {"time": "18:45", "raw": "B 配方奶 30ml         t }", "type": "formula", "amount": 30}, {"time": "19:52", "raw": "母乳   右7分钟", "type": "breast", "right_min": 7}, {"time": "20:07", "raw": "§ 配方奶 60ml         t }", "type": "formula", "amount": 60}, {"time": "23:37", "raw": "& 母乳    右21分钟", "type": "breast", "right_min": 21}], "total_milk_ml": 500, "breast_duration_h": 2.0, "sleep_duration_h": 0}, {"date": "2026-06-21", "label": "6月21日", "day_num": 17, "formula_count": 8, "formula_amount": 480, "bottle_breast_count": 9, "bottle_breast_amount": 271, "breast_count": 8, "breast_duration_min": 120, "sleep_count": 1, "sleep_duration_min": 24, "diaper_count": 6, "supplement_count": 1, "other_count": 0, "other_duration_min": 0, "tummy_count": 0, "tummy_duration_min": 0, "bath_count": 1, "bath_duration_min": 15, "events": [{"time": "05:45", "raw": "瓶喂母乳 25ml", "type": "bottle_breast", "amount": 25, "start": "05:45", "end": "05:46"}, {"time": "05:55", "raw": "§ 配方奶 60ml", "type": "formula", "amount": 60}, {"time": "06:50", "raw": "母乳    左16 分钟", "type": "breast", "left_min": 16, "start": "06:50", "end": "07:05"}, {"time": "22:30", "raw": "换尿布 lene", "type": "diaper", "detail": ""}, {"time": "22:56", "raw": "Q@ 母乳    右 16 分钟", "type": "breast", "right_min": 16}, {"time": "23:15", "raw": "瓶喂母乳 30ml          t }", "type": "bottle_breast", "amount": 30}, {"time": "23:36", "raw": "B 配方奶 60ml", "type": "formula", "amount": 60}], "total_milk_ml": 751, "breast_duration_h": 2.0, "sleep_duration_h": 0.4}, {"date": "2026-06-22", "label": "6月22日", "day_num": 18, "formula_count": 9, "formula_amount": 510, "bottle_breast_count": 7, "bottle_breast_amount": 265, "breast_count": 9, "breast_duration_min": 120, "sleep_count": 0, "sleep_duration_min": 0, "diaper_count": 3, "supplement_count": 1, "other_count": 0, "other_duration_min": 0, "tummy_count": 0, "tummy_duration_min": 0, "bath_count": 0, "bath_duration_min": 0, "events": [{"time": "02:17", "raw": "母乳    左5分钟", "type": "breast", "left_min": 5}, {"time": "02:28", "raw": "母乳    左28分钟      Insta360", "type": "breast", "left_min": 28, "start": "02:28", "end": "02:38"}, {"time": "05:10", "raw": "母乳   左10分钟 右5分钟", "type": "breast", "left_min": 10, "right_min": 5, "start": "05:10", "end": "05:20"}, {"time": "21:11", "raw": "母乳    右20分钟", "type": "breast", "right_min": 20}, {"time": "21:34", "raw": "瓶喂母乳 30ml", "type": "bottle_breast", "amount": 30}, {"time": "21:45", "raw": "§ 配方奶 60ml         @", "type": "formula", "amount": 60}, {"time": "23:03", "raw": "母乳    左9分钟", "type": "breast", "left_min": 9}, {"time": "23:23", "raw": "母乳    左6分钟            上", "type": "breast", "left_min": 6}], "total_milk_ml": 775, "breast_duration_h": 2.0, "sleep_duration_h": 0}, {"date": "2026-06-23", "label": "6月23日", "day_num": 19, "formula_count": 7, "formula_amount": 435, "bottle_breast_count": 6, "bottle_breast_amount": 160, "breast_count": 11, "breast_duration_min": 180, "sleep_count": 3, "sleep_duration_min": 180, "diaper_count": 4, "supplement_count": 0, "other_count": 0, "other_duration_min": 0, "tummy_count": 0, "tummy_duration_min": 0, "bath_count": 0, "bath_duration_min": 0, "events": [{"time": "00:05", "raw": "母乳    左10 分钟", "type": "breast", "left_min": 10, "start": "00:05", "end": "00:15"}, {"time": "00:30", "raw": "瓶喂母乳 50ml", "type": "bottle_breast", "amount": 50}, {"time": "00:40", "raw": "赎 配方奶 60ml", "type": "formula", "amount": 60, "start": "00:40", "end": "00:40"}, {"time": "03:16", "raw": "换尿布 lal", "type": "diaper", "detail": ""}, {"time": "03:16", "raw": "母乳   右20分钟", "type": "breast", "right_min": 20, "start": "03:16", "end": "03:36"}, {"time": "03:39", "raw": "®@ 瓶喂母乳 30ml", "type": "bottle_breast", "amount": 30, "start": "03:39", "end": "03:43"}, {"time": "06:04", "raw": "母乳    左22分钟", "type": "breast", "left_min": 22, "start": "06:04", "end": "06:26"}, {"time": "18:26", "raw": "母乳    左9分钟", "type": "breast", "left_min": 9}, {"time": "18:38", "raw": "宣 瓶喂母乳 30ml          r }", "type": "bottle_breast", "amount": 30}, {"time": "18:56", "raw": "冒 配方奶 60ml", "type": "formula", "amount": 60}, {"time": "20:16", "raw": "母乳   右20分钟", "type": "breast", "right_min": 20}, {"time": "20:51", "raw": "§ 配方奶 60ml", "type": "formula", "amount": 60}, {"time": "23:56", "raw": "母乳    左9分钟", "type": "breast", "left_min": 9}], "total_milk_ml": 595, "breast_duration_h": 3.0, "sleep_duration_h": 3.0}, {"date": "2026-06-24", "label": "6月24日", "day_num": 20, "formula_count": 6, "formula_amount": 330, "bottle_breast_count": 7, "bottle_breast_amount": 246, "breast_count": 11, "breast_duration_min": 180, "sleep_count": 0, "sleep_duration_min": 0, "diaper_count": 1, "supplement_count": 1, "other_count": 0, "other_duration_min": 0, "tummy_count": 0, "tummy_duration_min": 0, "bath_count": 1, "bath_duration_min": 10, "events": [{"time": "01:11", "raw": "母乳   左24分钟", "type": "breast", "left_min": 24}, {"time": "01:45", "raw": "瓶喂母乳 40ml", "type": "bottle_breast", "amount": 40, "start": "01:45", "end": "01:45"}, {"time": "01:56", "raw": "B 配方奶 30ml", "type": "formula", "amount": 30, "start": "01:56", "end": "01:57"}, {"time": "04:20", "raw": "母乳    右410 分钟", "type": "breast", "right_min": 410, "start": "04:20", "end": "04:49"}, {"time": "04:54", "raw": "瓶喂母乳 40ml", "type": "bottle_breast", "amount": 40, "start": "04:54", "end": "04:54"}, {"time": "18:58", "raw": "营养补剂 维生素右D 1粒", "type": "supplement", "detail": "维生素右D 1粒"}, {"time": "18:59", "raw": "B 配方奶 60ml         @", "type": "formula", "amount": 60}, {"time": "20:38", "raw": "QB 母乳    右11分钟", "type": "breast", "right_min": 11}, {"time": "20:52", "raw": "® 瓶喂母乳 26ml", "type": "bottle_breast", "amount": 26}, {"time": "21:02", "raw": "§ 配方奶 60ml", "type": "formula", "amount": 60}], "total_milk_ml": 576, "breast_duration_h": 3.0, "sleep_duration_h": 0}, {"date": "2026-06-25", "label": "6月25日", "day_num": 21, "formula_count": 8, "formula_amount": 515, "bottle_breast_count": 8, "bottle_breast_amount": 275, "breast_count": 9, "breast_duration_min": 120, "sleep_count": 0, "sleep_duration_min": 0, "diaper_count": 1, "supplement_count": 0, "other_count": 0, "other_duration_min": 0, "tummy_count": 0, "tummy_duration_min": 0, "bath_count": 0, "bath_duration_min": 0, "events": [{"time": "02:25", "raw": "®@ 瓶喂母乳 50ml", "type": "bottle_breast", "amount": 50, "start": "02:25", "end": "02:25"}, {"time": "20:58", "raw": "母乳    左19分钟", "type": "breast", "left_min": 19}, {"time": "21:29", "raw": "母乳   右17 分钟", "type": "breast", "right_min": 17}, {"time": "22:20", "raw": "瓶喂母乳 40ml          e@", "type": "bottle_breast", "amount": 40}], "total_milk_ml": 790, "breast_duration_h": 2.0, "sleep_duration_h": 0}, {"date": "2026-06-26", "label": "6月26日", "day_num": 22, "formula_count": 8, "formula_amount": 510, "bottle_breast_count": 8, "bottle_breast_amount": 270, "breast_count": 8, "breast_duration_min": 180, "sleep_count": 0, "sleep_duration_min": 0, "diaper_count": 3, "supplement_count": 0, "other_count": 0, "other_duration_min": 0, "tummy_count": 0, "tummy_duration_min": 0, "bath_count": 0, "bath_duration_min": 0, "events": [{"time": "00:01", "raw": "B 配方奶 90ml", "type": "formula", "amount": 90, "start": "00:01", "end": "00:01"}, {"time": "02:55", "raw": "母乳    左19分钟", "type": "breast", "left_min": 19, "start": "02:55", "end": "03:14"}, {"time": "03:22", "raw": "瓶喂母乳 35ml", "type": "bottle_breast", "amount": 35, "start": "03:22", "end": "03:22"}, {"time": "06:08", "raw": "母乳    右27分钟", "type": "breast", "right_min": 27, "start": "06:08", "end": "06:35"}, {"time": "09:36", "raw": "母乳    左17分钟", "type": "breast", "left_min": 17, "start": "09:36", "end": "09:54"}, {"time": "19:48", "raw": "换尿布 DE        r)", "type": "diaper", "detail": ""}, {"time": "23:04", "raw": "母乳    右29分钟           E", "type": "breast", "right_min": 29}, {"time": "23:52", "raw": "® 瓶喂母乳 30ml", "type": "bottle_breast", "amount": 30}], "total_milk_ml": 780, "breast_duration_h": 3.0, "sleep_duration_h": 0}, {"date": "2026-06-27", "label": "6月27日", "day_num": 23, "formula_count": 10, "formula_amount": 725, "bottle_breast_count": 5, "bottle_breast_amount": 195, "breast_count": 8, "breast_duration_min": 120, "sleep_count": 0, "sleep_duration_min": 0, "diaper_count": 1, "supplement_count": 0, "other_count": 0, "other_duration_min": 0, "tummy_count": 0, "tummy_duration_min": 0, "bath_count": 0, "bath_duration_min": 0, "events": [{"time": "01:31", "raw": "母乳   左26分钟", "type": "breast", "left_min": 26, "start": "01:31", "end": "01:56"}, {"time": "02:08", "raw": "瓶喂母乳 40ml", "type": "bottle_breast", "amount": 40, "start": "02:08", "end": "02:11"}, {"time": "05:32", "raw": "母乳    右32分钟", "type": "breast", "right_min": 32, "start": "05:32", "end": "06:04"}, {"time": "19:30", "raw": "母乳    左12分钟            上", "type": "breast", "left_min": 12}, {"time": "21:00", "raw": "§ 配方奶 30ml", "type": "formula", "amount": 30}, {"time": "22:07", "raw": "母乳    右18 分钟", "type": "breast", "right_min": 18}, {"time": "23:40", "raw": "B 配方奶 90ml", "type": "formula", "amount": 90}], "total_milk_ml": 920, "breast_duration_h": 2.0, "sleep_duration_h": 0}, {"date": "2026-06-28", "label": "6月28日", "day_num": 24, "formula_count": 7, "formula_amount": 470, "bottle_breast_count": 6, "bottle_breast_amount": 220, "breast_count": 7, "breast_duration_min": 120, "sleep_count": 0, "sleep_duration_min": 0, "diaper_count": 1, "supplement_count": 0, "other_count": 0, "other_duration_min": 0, "tummy_count": 0, "tummy_duration_min": 0, "bath_count": 0, "bath_duration_min": 0, "events": [{"time": "00:21", "raw": "换尿布 Nae         @", "type": "diaper", "detail": ""}, {"time": "00:24", "raw": "母乳    左23分钟", "type": "breast", "left_min": 23, "start": "00:24", "end": "00:47"}, {"time": "01:00", "raw": "®@ 瓶喂母乳 30ml", "type": "bottle_breast", "amount": 30, "start": "01:00", "end": "01:00"}, {"time": "02:57", "raw": "母乳    右 26 分钟", "type": "breast", "right_min": 26, "start": "02:57", "end": "03:24"}, {"time": "19:01", "raw": "瓶喂母乳 30ml", "type": "bottle_breast", "amount": 30}, {"time": "21:52", "raw": "瓶喂母乳 50ml          @", "type": "bottle_breast", "amount": 50}, {"time": "21:58", "raw": "§ 配方奶 60ml", "type": "formula", "amount": 60}], "total_milk_ml": 690, "breast_duration_h": 2.0, "sleep_duration_h": 0}, {"date": "2026-06-29", "label": "6月29日", "day_num": 25, "formula_count": 9, "formula_amount": 580, "bottle_breast_count": 5, "bottle_breast_amount": 200, "breast_count": 7, "breast_duration_min": 180, "sleep_count": 1, "sleep_duration_min": 38, "diaper_count": 4, "supplement_count": 1, "other_count": 0, "other_duration_min": 0, "tummy_count": 0, "tummy_duration_min": 0, "bath_count": 0, "bath_duration_min": 0, "events": [{"time": "02:35", "raw": "母乳    左23分钟", "type": "breast", "left_min": 23, "start": "02:35", "end": "02:58"}, {"time": "03:23", "raw": "®@ 瓶喂母乳 20ml", "type": "bottle_breast", "amount": 20, "start": "03:23", "end": "03:23"}, {"time": "03:26", "raw": "B 配方奶 100ml", "type": "formula", "amount": 100, "start": "03:26", "end": "03:26"}, {"time": "05:45", "raw": "母乳   右16分钟", "type": "breast", "right_min": 16, "start": "05:45", "end": "06:01"}, {"time": "06:13", "raw": "®@ 瓶喂母乳 30ml", "type": "bottle_breast", "amount": 30, "start": "06:13", "end": "06:14"}, {"time": "08:40", "raw": "母乳    左15分钟", "type": "breast", "left_min": 15, "start": "08:40", "end": "08:55"}, {"time": "19:28", "raw": "母乳   左16分钟          j", "type": "breast", "left_min": 16}, {"time": "19:52", "raw": "®@ 瓶喂母乳 35ml", "type": "bottle_breast", "amount": 35}, {"time": "20:50", "raw": "者 换尿布 R右RE. Milk", "type": "diaper", "detail": "R右RE"}, {"time": "23:51", "raw": "母乳   右19 分钟 > He 2233 钟", "type": "breast", "right_min": 19}], "total_milk_ml": 780, "breast_duration_h": 3.0, "sleep_duration_h": 0.6}, {"date": "2026-06-30", "label": "6月30日", "day_num": 26, "formula_count": 8, "formula_amount": 605, "bottle_breast_count": 7, "bottle_breast_amount": 205, "breast_count": 10, "breast_duration_min": 120, "sleep_count": 0, "sleep_duration_min": 0, "diaper_count": 3, "supplement_count": 0, "other_count": 0, "other_duration_min": 0, "tummy_count": 0, "tummy_duration_min": 0, "bath_count": 0, "bath_duration_min": 0, "events": [{"time": "00:37", "raw": "者 换尿布 臭臭 黄色、奶办有", "type": "diaper", "detail": "臭臭 黄色、奶办有"}, {"time": "01:50", "raw": "瓶喂母乳 30ml", "type": "bottle_breast", "amount": 30, "start": "01:50", "end": "01:50"}, {"time": "03:16", "raw": "母乳   左10 分钟", "type": "breast", "left_min": 10, "start": "03:16", "end": "03:26"}, {"time": "03:27", "raw": "母乳    左10 分钟", "type": "breast", "left_min": 10}, {"time": "03:41", "raw": "母乳    右8分钟       Insta360", "type": "breast", "right_min": 8, "start": "03:41", "end": "03:49"}, {"time": "19:01", "raw": "母乳   右18分钟     r }", "type": "breast", "right_min": 18}, {"time": "19:40", "raw": "®@ 瓶喂母乳 30ml", "type": "bottle_breast", "amount": 30}, {"time": "22:00", "raw": "B 配方奶 90ml", "type": "formula", "amount": 90}, {"time": "23:01", "raw": "母乳    左5分钟", "type": "breast", "left_min": 5}], "total_milk_ml": 810, "breast_duration_h": 2.0, "sleep_duration_h": 0}, {"date": "2026-07-01", "label": "7月1日", "day_num": 27, "formula_count": 9, "formula_amount": 640, "bottle_breast_count": 5, "bottle_breast_amount": 170, "breast_count": 10, "breast_duration_min": 120, "sleep_count": 1, "sleep_duration_min": 16, "diaper_count": 1, "supplement_count": 0, "other_count": 0, "other_duration_min": 0, "tummy_count": 0, "tummy_duration_min": 0, "bath_count": 0, "bath_duration_min": 0, "events": [{"time": "04:32", "raw": "母乳    右18分钟", "type": "breast", "right_min": 18, "start": "04:32", "end": "04:50"}, {"time": "04:53", "raw": "母乳    左6分钟", "type": "breast", "left_min": 6, "start": "04:53", "end": "04:59"}, {"time": "09:10", "raw": "B 配方奶 120ml        Insta360", "type": "formula", "amount": 120}, {"time": "10:00", "raw": "O@ 营养补剂 维生素右D 1粒", "type": "supplement", "detail": "维生素右D 1粒"}, {"time": "20:12", "raw": "母乳   左17分钟", "type": "breast", "left_min": 17}, {"time": "20:42", "raw": "母乳    右 13 分钟", "type": "breast", "right_min": 13}, {"time": "21:08", "raw": "®@ 瓶喂母乳 30ml", "type": "bottle_breast", "amount": 30}, {"time": "21:44", "raw": "§ 配方奶 60ml", "type": "formula", "amount": 60}, {"time": "23:37", "raw": "母乳    右17分  Sih “左 14 分钟", "type": "breast", "right_min": 17}], "total_milk_ml": 810, "breast_duration_h": 2.0, "sleep_duration_h": 0.3}, {"date": "2026-07-02", "label": "7月2日", "day_num": 28, "formula_count": 8, "formula_amount": 720, "bottle_breast_count": 4, "bottle_breast_amount": 215, "breast_count": 6, "breast_duration_min": 60, "sleep_count": 0, "sleep_duration_min": 0, "diaper_count": 0, "supplement_count": 1, "other_count": 0, "other_duration_min": 0, "tummy_count": 0, "tummy_duration_min": 0, "bath_count": 0, "bath_duration_min": 0, "events": [{"time": "01:09", "raw": "母乳   右15分钟      r )", "type": "breast", "right_min": 15}, {"time": "04:50", "raw": "母乳    左16 分钟", "type": "breast", "left_min": 16, "start": "04:50", "end": "05:05"}, {"time": "05:26", "raw": "B 配方奶 100ml", "type": "formula", "amount": 100, "start": "05:26", "end": "05:26"}, {"time": "16:04", "raw": "瓶喂母乳 25ml", "type": "bottle_breast", "amount": 25}, {"time": "16:20", "raw": "B 配方奶 60ml         @", "type": "formula", "amount": 60}, {"time": "21:27", "raw": "母乳   右16 分钟", "type": "breast", "right_min": 16}, {"time": "21:49", "raw": "瓶喂母乳 40ml              攻", "type": "bottle_breast", "amount": 40}, {"time": "21:52", "raw": "B 配方奶 60ml", "type": "formula", "amount": 60}], "total_milk_ml": 935, "breast_duration_h": 1.0, "sleep_duration_h": 0}, {"date": "2026-07-03", "label": "7月3日", "day_num": 29, "formula_count": 9, "formula_amount": 750, "bottle_breast_count": 5, "bottle_breast_amount": 140, "breast_count": 8, "breast_duration_min": 120, "sleep_count": 0, "sleep_duration_min": 0, "diaper_count": 1, "supplement_count": 1, "other_count": 0, "other_duration_min": 0, "tummy_count": 0, "tummy_duration_min": 0, "bath_count": 0, "bath_duration_min": 0, "events": [{"time": "00:46", "raw": "母乳    左21分钟           上", "type": "breast", "left_min": 21, "start": "00:46", "end": "01:08"}, {"time": "01:15", "raw": "冒 配方奶 60ml", "type": "formula", "amount": 60, "start": "01:15", "end": "01:15"}, {"time": "02:04", "raw": "母乳    右14分钟", "type": "breast", "right_min": 14, "start": "02:04", "end": "02:18"}, {"time": "06:45", "raw": "®@ 瓶喂母乳 20ml", "type": "bottle_breast", "amount": 20, "start": "06:45", "end": "06:45"}, {"time": "19:15", "raw": "冒 配方奶 80ml", "type": "formula", "amount": 80}, {"time": "21:58", "raw": "母乳    右18分钟", "type": "breast", "right_min": 18}, {"time": "22:22", "raw": "§ 配方奶 90ml", "type": "formula", "amount": 90}, {"time": "22:22", "raw": "® 瓶喂母乳 20ml          e", "type": "bottle_breast", "amount": 20}], "total_milk_ml": 890, "breast_duration_h": 2.0, "sleep_duration_h": 0}, {"date": "2026-07-04", "label": "7月4日", "day_num": 30, "formula_count": 11, "formula_amount": 790, "bottle_breast_count": 6, "bottle_breast_amount": 190, "breast_count": 8, "breast_duration_min": 120, "sleep_count": 1, "sleep_duration_min": 16, "diaper_count": 5, "supplement_count": 1, "other_count": 0, "other_duration_min": 0, "tummy_count": 0, "tummy_duration_min": 0, "bath_count": 0, "bath_duration_min": 0, "events": [{"time": "01:12", "raw": "母乳   左15分钟", "type": "breast", "left_min": 15}, {"time": "01:35", "raw": "®@ 瓶喂母乳 30ml", "type": "bottle_breast", "amount": 30}, {"time": "04:29", "raw": "母乳    右21分钟", "type": "breast", "right_min": 21, "start": "04:29", "end": "04:50"}, {"time": "04:50", "raw": "®@ 瓶喂母乳 30ml", "type": "bottle_breast", "amount": 30, "start": "04:50", "end": "04:51"}, {"time": "20:12", "raw": "母乳   左17分钟", "type": "breast", "left_min": 17}, {"time": "20:20", "raw": "换尿布", "type": "diaper", "detail": ""}, {"time": "22:20", "raw": "B 配方奶 60ml", "type": "formula", "amount": 60}], "total_milk_ml": 980, "breast_duration_h": 2.0, "sleep_duration_h": 0.3}, {"date": "2026-07-05", "label": "7月5日", "day_num": 31, "formula_count": 9, "formula_amount": 615, "bottle_breast_count": 4, "bottle_breast_amount": 135, "breast_count": 8, "breast_duration_min": 120, "sleep_count": 0, "sleep_duration_min": 0, "diaper_count": 0, "supplement_count": 2, "other_count": 0, "other_duration_min": 0, "tummy_count": 0, "tummy_duration_min": 0, "bath_count": 0, "bath_duration_min": 0, "events": [{"time": "03:56", "raw": "母乳    左17分钟", "type": "breast", "left_min": 17, "start": "03:56", "end": "04:13"}, {"time": "06:12", "raw": "母乳   右18 分钟", "type": "breast", "right_min": 18, "start": "06:12", "end": "06:30"}, {"time": "07:03", "raw": "®@ 瓶喂母乳 30ml", "type": "bottle_breast", "amount": 30, "start": "07:03", "end": "07:03"}, {"time": "17:23", "raw": "瓶喂母乳 40ml", "type": "bottle_breast", "amount": 40}, {"time": "20:29", "raw": "B 配方奶 60ml", "type": "formula", "amount": 60}, {"time": "20:37", "raw": "母乳    左14分钟", "type": "breast", "left_min": 14}], "total_milk_ml": 750, "breast_duration_h": 2.0, "sleep_duration_h": 0}, {"date": "2026-07-06", "label": "7月6日", "day_num": 32, "formula_count": 9, "formula_amount": 650, "bottle_breast_count": 3, "bottle_breast_amount": 90, "breast_count": 7, "breast_duration_min": 120, "sleep_count": 0, "sleep_duration_min": 0, "diaper_count": 3, "supplement_count": 0, "other_count": 0, "other_duration_min": 0, "tummy_count": 0, "tummy_duration_min": 0, "bath_count": 0, "bath_duration_min": 0, "events": [{"time": "00:12", "raw": "换尿布 Nil", "type": "diaper", "detail": ""}, {"time": "00:12", "raw": "母乳    左16 分钟", "type": "breast", "left_min": 16, "start": "00:12", "end": "00:28"}, {"time": "03:45", "raw": "换尿布 NIE", "type": "diaper", "detail": ""}, {"time": "03:51", "raw": "母乳   左20分钟“右9分钟", "type": "breast", "left_min": 20, "right_min": 9, "start": "03:51", "end": "04:22"}, {"time": "17:30", "raw": "换尿布 = Niel", "type": "diaper", "detail": ""}, {"time": "21:06", "raw": "换尿布 Walz", "type": "diaper", "detail": ""}, {"time": "21:16", "raw": "B 配方奶 100ml", "type": "formula", "amount": 100}], "total_milk_ml": 740, "breast_duration_h": 2.0, "sleep_duration_h": 0}, {"date": "2026-07-07", "label": "7月7日", "day_num": 33, "formula_count": 8, "formula_amount": 410, "bottle_breast_count": 5, "bottle_breast_amount": 135, "breast_count": 11, "breast_duration_min": 180, "sleep_count": 0, "sleep_duration_min": 0, "diaper_count": 10, "supplement_count": 1, "other_count": 0, "other_duration_min": 0, "tummy_count": 0, "tummy_duration_min": 0, "bath_count": 0, "bath_duration_min": 0, "events": [{"time": "02:19", "raw": "母乳   右7分钟 左12分钟", "type": "breast", "right_min": 7, "start": "02:19", "end": "02:38"}, {"time": "02:21", "raw": "换尿布       +l 黄色、", "type": "diaper", "detail": "黄色、"}, {"time": "05:07", "raw": "换尿布 =e          Insta360", "type": "diaper", "detail": "Insta360"}, {"time": "06:20", "raw": "母乳    右9分钟", "type": "breast", "right_min": 9, "start": "06:20", "end": "06:29"}, {"time": "19:42", "raw": "营养补剂 维生素右D 1粒", "type": "supplement", "detail": "维生素右D 1粒"}, {"time": "19:46", "raw": "母乳    左6分钟 *右3分钟      上", "type": "breast", "left_min": 6, "right_min": 3}, {"time": "20:34", "raw": "换尿布 aed", "type": "diaper", "detail": ""}, {"time": "23:19", "raw": "换尿布 lal", "type": "diaper", "detail": ""}, {"time": "23:19", "raw": "母乳    右22分钟", "type": "breast", "right_min": 22}], "total_milk_ml": 545, "breast_duration_h": 3.0, "sleep_duration_h": 0}, {"date": "2026-07-08", "label": "7月8日", "day_num": 34, "formula_count": 10, "formula_amount": 690, "bottle_breast_count": 3, "bottle_breast_amount": 90, "breast_count": 5, "breast_duration_min": 60, "sleep_count": 4, "sleep_duration_min": 300, "diaper_count": 8, "supplement_count": 1, "other_count": 7, "other_duration_min": 60, "tummy_count": 0, "tummy_duration_min": 0, "bath_count": 0, "bath_duration_min": 0, "events": [{"time": "00:00", "raw": "区 睡眠    睡了57 分钟", "type": "sleep", "duration_min": 57, "start": "00:00", "end": "00:57; 左侧睡"}, {"time": "00:55", "raw": "母乳    左22分钟", "type": "breast", "left_min": 22, "start": "00:55", "end": "01:17"}, {"time": "00:58", "raw": "换尿布                 Insta360", "type": "diaper", "detail": "Insta360"}, {"time": "01:38", "raw": "母乳   右11分钟", "type": "breast", "right_min": 11, "start": "01:38", "end": "01:50"}, {"time": "02:06", "raw": "睡眠    睡了51分钟", "type": "sleep", "duration_min": 51, "start": "02:06", "end": "02:56; 右侧睡"}, {"time": "02:57", "raw": "母乳    左29分钟      Insta360", "type": "breast", "left_min": 29, "start": "02:57", "end": "03:25"}, {"time": "20:15", "raw": "睡眠    睡了1小时49 4h       攻", "type": "sleep", "duration_min": 60}, {"time": "22:05", "raw": "换尿布 ”听咕", "type": "diaper", "detail": "”听咕"}, {"time": "22:20", "raw": "B 配方奶 120ml             攻", "type": "formula", "amount": 120}, {"time": "22:50", "raw": "; © 睡眠    睡了1小时9分钟", "type": "sleep", "duration_min": 69}], "total_milk_ml": 780, "breast_duration_h": 1.0, "sleep_duration_h": 5.0}, {"date": "2026-07-09", "label": "7月9日", "day_num": 35, "formula_count": 6, "formula_amount": 560, "bottle_breast_count": 3, "bottle_breast_amount": 195, "breast_count": 6, "breast_duration_min": 60, "sleep_count": 8, "sleep_duration_min": 600, "diaper_count": 9, "supplement_count": 1, "other_count": 4, "other_duration_min": 7, "tummy_count": 0, "tummy_duration_min": 0, "bath_count": 1, "bath_duration_min": 10, "events": [{"time": "03:25", "raw": "换尿布 = Ne", "type": "diaper", "detail": ""}, {"time": "03:28", "raw": "§ 配方奶 110ml         Insta360", "type": "formula", "amount": 110, "start": "03:28", "end": "03:28"}, {"time": "03:48", "raw": "睡眠    睡了2小时12 分钟", "type": "sleep", "duration_min": 132, "start": "03:48", "end": "06:00; 左边"}, {"time": "06:48", "raw": "换尿布 = dz", "type": "diaper", "detail": ""}, {"time": "18:33", "raw": "区 睡眠    睡了1小时44分钟", "type": "sleep", "duration_min": 104}, {"time": "20:32", "raw": "配方奶 120ml", "type": "formula", "amount": 120}, {"time": "21:09", "raw": "睡眠    睡了2小时44分钟", "type": "sleep", "duration_min": 164}, {"time": "23:55", "raw": "换尿布 en", "type": "diaper", "detail": ""}], "total_milk_ml": 755, "breast_duration_h": 1.0, "sleep_duration_h": 10.0}, {"date": "2026-07-10", "label": "7月10日", "day_num": 36, "formula_count": 7, "formula_amount": 760, "bottle_breast_count": 3, "bottle_breast_amount": 190, "breast_count": 4, "breast_duration_min": 60, "sleep_count": 2, "sleep_duration_min": 180, "diaper_count": 5, "supplement_count": 1, "other_count": 1, "other_duration_min": 2, "tummy_count": 0, "tummy_duration_min": 0, "bath_count": 0, "bath_duration_min": 0, "events": [{"time": "00:35", "raw": "换尿布 Wiz                ,", "type": "diaper", "detail": ""}, {"time": "00:45", "raw": "® 瓶喂母乳 120ml", "type": "bottle_breast", "amount": 120, "start": "00:45", "end": "00:45"}, {"time": "03:20", "raw": "换尿布 MeN", "type": "diaper", "detail": ""}, {"time": "03:27", "raw": "®@ 瓶喂母乳 50ml", "type": "bottle_breast", "amount": 50}, {"time": "05:25", "raw": "换尿布 lee", "type": "diaper", "detail": ""}, {"time": "19:30", "raw": "换尿布", "type": "diaper", "detail": ""}, {"time": "21:17", "raw": "QB 母乳    #27 Dh *左5分钟", "type": "breast", "left_min": 5}, {"time": "22:00", "raw": "; @ 瓶喂母乳 50ml              攻", "type": "bottle_breast", "amount": 50}], "total_milk_ml": 950, "breast_duration_h": 1.0, "sleep_duration_h": 3.0}, {"date": "2026-07-11", "label": "7月11日", "day_num": 37, "formula_count": 10, "formula_amount": 680, "bottle_breast_count": 3, "bottle_breast_amount": 210, "breast_count": 3, "breast_duration_min": 56, "sleep_count": 0, "sleep_duration_min": 0, "diaper_count": 7, "supplement_count": 1, "other_count": 3, "other_duration_min": 60, "tummy_count": 0, "tummy_duration_min": 0, "bath_count": 0, "bath_duration_min": 0, "events": [{"time": "02:50", "raw": "§ 配方奶 150ml         e@", "type": "formula", "amount": 150}, {"time": "03:13", "raw": "换尿布 = ane         Insta360", "type": "diaper", "detail": "Insta360"}, {"time": "06:47", "raw": "换尿布 =n          Insta360", "type": "diaper", "detail": "Insta360"}, {"time": "06:55", "raw": "®@ 瓶喂母乳 35ml", "type": "bottle_breast", "amount": 35, "start": "06:55", "end": "06:55"}, {"time": "07:10", "raw": "O 营养补剂 维生素D3 1粒", "type": "supplement", "detail": "维生素D3 1粒"}, {"time": "08:30", "raw": "瓶喂母乳 30ml         Insta360", "type": "bottle_breast", "amount": 30, "start": "08:30", "end": "08:30"}, {"time": "13:08", "raw": "换尿布 RR 黄色、糊状", "type": "diaper", "detail": "黄色、糊状"}, {"time": "15:45", "raw": "B 配方奶 90ml         @", "type": "formula", "amount": 90}, {"time": "17:32", "raw": "B 其他事件 1小时3分钟", "type": "other", "duration_min": 1}, {"time": "18:52", "raw": "配方奶 90ml", "type": "formula", "amount": 90}, {"time": "20:27", "raw": "母乳    左18分钟           攻", "type": "breast", "left_min": 18}, {"time": "23:00", "raw": "B 配方奶 120ml         r }", "type": "formula", "amount": 120}], "total_milk_ml": 890, "breast_duration_h": 0.9, "sleep_duration_h": 0}, {"date": "2026-07-12", "label": "7月12日", "day_num": 38, "formula_count": 11, "formula_amount": 640, "bottle_breast_count": 3, "bottle_breast_amount": 85, "breast_count": 1, "breast_duration_min": 15, "sleep_count": 1, "sleep_duration_min": 0, "diaper_count": 3, "supplement_count": 1, "other_count": 2, "other_duration_min": 60, "tummy_count": 0, "tummy_duration_min": 0, "bath_count": 0, "bath_duration_min": 0, "events": [{"time": "03:38", "raw": "®@ 瓶喂母乳 120ml", "type": "bottle_breast", "amount": 120}, {"time": "05:48", "raw": "B 配方奶 60ml", "type": "formula", "amount": 60}, {"time": "07:34", "raw": "母乳    右25分钟", "type": "breast", "right_min": 25, "start": "07:34", "end": "08:00"}, {"time": "08:21", "raw": "瓶喂母乳 40ml", "type": "bottle_breast", "amount": 40}, {"time": "08:37", "raw": "换尿布 BR右+ME 黄色、糊状", "type": "diaper", "detail": "BR右 黄色、糊状"}, {"time": "19:21", "raw": "B 配方奶 30ml        e@", "type": "formula", "amount": 30}, {"time": "20:31", "raw": "多 睡眠    睡了3小时23 分钟", "type": "sleep", "duration_min": 203}], "total_milk_ml": 725, "breast_duration_h": 0.2, "sleep_duration_h": 0}, {"date": "2026-07-13", "label": "7月13日", "day_num": 39, "formula_count": 7, "formula_amount": 540, "bottle_breast_count": 5, "bottle_breast_amount": 345, "breast_count": 3, "breast_duration_min": 60, "sleep_count": 4, "sleep_duration_min": 300, "diaper_count": 3, "supplement_count": 1, "other_count": 3, "other_duration_min": 60, "tummy_count": 0, "tummy_duration_min": 0, "bath_count": 1, "bath_duration_min": 10, "events": [{"time": "00:00", "raw": "睡眠    睡了1小时4分钟   .", "type": "sleep", "duration_min": 64, "start": "00:00", "end": "01:04         ,"}, {"time": "01:04", "raw": "§ 配方奶 120ml", "type": "formula", "amount": 120, "start": "01:04", "end": "01:04"}, {"time": "03:30", "raw": "§ 配方奶 120ml", "type": "formula", "amount": 120}, {"time": "05:18", "raw": "母乳   左15分钟", "type": "breast", "left_min": 15, "start": "05:18", "end": "05:33"}, {"time": "05:18", "raw": "换尿布 edz         Insta360", "type": "diaper", "detail": "Insta360"}, {"time": "07:40", "raw": "换尿布 ile          Insta360", "type": "diaper", "detail": "Insta360"}, {"time": "20:14", "raw": "睡眠   BET 2 /|\\at 35 54h     ,", "type": "sleep"}, {"time": "22:43", "raw": "® 瓶喂母乳 110ml", "type": "bottle_breast", "amount": 110}, {"time": "22:44", "raw": "者 换尿布 lee", "type": "diaper", "detail": ""}, {"time": "23:09", "raw": "睡眠    RE 7 50 分钟", "type": "sleep"}], "total_milk_ml": 885, "breast_duration_h": 1.0, "sleep_duration_h": 5.0}, {"date": "2026-07-14", "label": "7月14日", "day_num": 40, "formula_count": 10, "formula_amount": 840, "bottle_breast_count": 4, "bottle_breast_amount": 200, "breast_count": 3, "breast_duration_min": 60, "sleep_count": 2, "sleep_duration_min": 60, "diaper_count": 5, "supplement_count": 1, "other_count": 2, "other_duration_min": 48, "tummy_count": 0, "tummy_duration_min": 0, "bath_count": 0, "bath_duration_min": 0, "events": [{"time": "06:50", "raw": "瓶喂母乳 150ml", "type": "bottle_breast", "amount": 150}, {"time": "08:26", "raw": "睡眠    RET 205) 4h", "type": "sleep", "start": "08:26", "end": "08:46"}, {"time": "08:46", "raw": "B@ 配方奶 50ml", "type": "formula", "amount": 50, "start": "08:46", "end": "08:47"}, {"time": "09:21", "raw": "睡眠    睡了1小时25 分钟", "type": "sleep", "duration_min": 85, "start": "09:21", "end": "10:46"}, {"time": "10:53", "raw": "换尿布 。唾听            Insta360", "type": "diaper", "detail": "。唾听 Insta360"}, {"time": "21:30", "raw": "® 瓶喂母乳 40ml", "type": "bottle_breast", "amount": 40}, {"time": "21:32", "raw": "§ 配方奶 990ml", "type": "formula", "amount": 990}, {"time": "23:25", "raw": "® 瓶喂母乳 20ml", "type": "bottle_breast", "amount": 20}], "total_milk_ml": 1040, "breast_duration_h": 1.0, "sleep_duration_h": 1.0}, {"date": "2026-07-15", "label": "7月15日", "day_num": 41, "formula_count": 9, "formula_amount": 625, "bottle_breast_count": 3, "bottle_breast_amount": 210, "breast_count": 3, "breast_duration_min": 39, "sleep_count": 4, "sleep_duration_min": 240, "diaper_count": 3, "supplement_count": 1, "other_count": 0, "other_duration_min": 0, "tummy_count": 0, "tummy_duration_min": 0, "bath_count": 0, "bath_duration_min": 0, "events": [{"time": "00:15", "raw": "睡眠   睡了2小时 47 2 oh", "type": "sleep", "duration_min": 120}, {"time": "03:10", "raw": "母乳   右20分钟", "type": "breast", "right_min": 20, "start": "03:10", "end": "03:30"}, {"time": "03:32", "raw": "换尿布 lh", "type": "diaper", "detail": ""}, {"time": "03:40", "raw": "§ 配方奶 60ml", "type": "formula", "amount": 60}, {"time": "03:59", "raw": "睡眠    睡了1小时 59 分钟", "type": "sleep", "duration_min": 119, "start": "03:59", "end": "05:57"}, {"time": "06:30", "raw": "换尿布 Maik", "type": "diaper", "detail": ""}, {"time": "20:48", "raw": "换尿布 Mek           t )", "type": "diaper", "detail": ""}, {"time": "20:48", "raw": "睡眠    睡了2小时23 分钟", "type": "sleep", "duration_min": 143}, {"time": "23:15", "raw": "母乳   左16 分钟          ,", "type": "breast", "left_min": 16}, {"time": "23:39", "raw": "瓶喂母乳 30ml", "type": "bottle_breast", "amount": 30}, {"time": "23:56", "raw": "B 配方奶 60ml          r }", "type": "formula", "amount": 60}], "total_milk_ml": 835, "breast_duration_h": 0.7, "sleep_duration_h": 4.0}, {"date": "2026-07-16", "label": "7月16日", "day_num": 42, "formula_count": 8, "formula_amount": 500, "bottle_breast_count": 3, "bottle_breast_amount": 90, "breast_count": 6, "breast_duration_min": 60, "sleep_count": 6, "sleep_duration_min": 600, "diaper_count": 4, "supplement_count": 1, "other_count": 4, "other_duration_min": 36, "tummy_count": 0, "tummy_duration_min": 0, "bath_count": 1, "bath_duration_min": 10, "events": [{"time": "00:00", "raw": "睡眠    睡了1小时55 分钟", "type": "sleep", "duration_min": 115, "start": "00:00", "end": "01:54"}, {"time": "00:27", "raw": "换尿布 “”咕咕", "type": "diaper", "detail": "“”咕咕"}, {"time": "01:56", "raw": "母乳    左10分钟*右3分钟", "type": "breast", "left_min": 10, "right_min": 3, "start": "01:56", "end": "02:09"}, {"time": "03:45", "raw": "换尿布 ale", "type": "diaper", "detail": ""}, {"time": "05:40", "raw": "换尿布 。”臭臭+咕喊 黄色、糊状", "type": "diaper", "detail": "。”臭臭 咕喊 黄色、糊状"}, {"time": "21:30", "raw": "换尿布 nee", "type": "diaper", "detail": ""}, {"time": "22:43", "raw": "母乳    右17分钟       e", "type": "breast", "right_min": 17}, {"time": "23:15", "raw": "瓶喂母乳 30ml", "type": "bottle_breast", "amount": 30}, {"time": "23:17", "raw": "B 配方奶 30ml        人", "type": "formula", "amount": 30}, {"time": "23:40", "raw": "睡眠    睡了19 54h          ,", "type": "sleep", "duration_min": 117240}], "total_milk_ml": 590, "breast_duration_h": 1.0, "sleep_duration_h": 10.0}, {"date": "2026-07-17", "label": "7月17日", "day_num": 43, "formula_count": 9, "formula_amount": 890, "bottle_breast_count": 1, "bottle_breast_amount": 70, "breast_count": 4, "breast_duration_min": 39, "sleep_count": 3, "sleep_duration_min": 240, "diaper_count": 8, "supplement_count": 1, "other_count": 2, "other_duration_min": 24, "tummy_count": 0, "tummy_duration_min": 0, "bath_count": 0, "bath_duration_min": 0, "events": [{"time": "02:29", "raw": "换尿布 “”咕咕", "type": "diaper", "detail": "“”咕咕"}, {"time": "02:50", "raw": "母乳    左34分钟", "type": "breast", "left_min": 34}, {"time": "05:42", "raw": "换尿布 =n          Insta360", "type": "diaper", "detail": "Insta360"}, {"time": "06:26", "raw": "母乳       分钟右7分钟", "type": "breast", "right_min": 7}, {"time": "16:35", "raw": "换尿布 R右+MI BE. Milk", "type": "diaper", "detail": "R右"}, {"time": "17:19", "raw": "母乳    左11分钟*右1分钟      上", "type": "breast", "left_min": 11, "right_min": 1}, {"time": "19:40", "raw": "§ 配方奶 100ml               j", "type": "formula", "amount": 100}, {"time": "20:48", "raw": "换尿布 lene", "type": "diaper", "detail": ""}, {"time": "23:40", "raw": "§ 配方奶 120ml", "type": "formula", "amount": 120}], "total_milk_ml": 960, "breast_duration_h": 0.7, "sleep_duration_h": 4.0}, {"date": "2026-07-18", "label": "7月18日", "day_num": 44, "formula_count": 11, "formula_amount": 810, "bottle_breast_count": 2, "bottle_breast_amount": 65, "breast_count": 7, "breast_duration_min": 60, "sleep_count": 1, "sleep_duration_min": 60, "diaper_count": 5, "supplement_count": 1, "other_count": 0, "other_duration_min": 0, "tummy_count": 0, "tummy_duration_min": 0, "bath_count": 0, "bath_duration_min": 0, "events": [{"time": "00:30", "raw": "§ 配方奶 100ml         e", "type": "formula", "amount": 100}, {"time": "05:10", "raw": "®@ 瓶喂母乳 110ml", "type": "bottle_breast", "amount": 110, "start": "05:10", "end": "05:10"}, {"time": "05:11", "raw": "母乳   左11分钟", "type": "breast", "left_min": 11, "start": "05:11", "end": "05:22"}, {"time": "07:37", "raw": "母乳   右11分钟 左9分钟", "type": "breast", "right_min": 11, "start": "07:37", "end": "07:57"}, {"time": "18:20", "raw": "母乳    右8分钟", "type": "breast", "right_min": 8}, {"time": "19:20", "raw": "§ 配方奶 60ml", "type": "formula", "amount": 60}, {"time": "19:57", "raw": "换尿布", "type": "diaper", "detail": ""}, {"time": "20:24", "raw": "B 配方奶 60ml", "type": "formula", "amount": 60}], "total_milk_ml": 875, "breast_duration_h": 1.0, "sleep_duration_h": 1.0}, {"date": "2026-07-19", "label": "7月19日", "day_num": 45, "formula_count": 11, "formula_amount": 815, "bottle_breast_count": 2, "bottle_breast_amount": 160, "breast_count": 3, "breast_duration_min": 51, "sleep_count": 0, "sleep_duration_min": 0, "diaper_count": 1, "supplement_count": 1, "other_count": 1, "other_duration_min": 4, "tummy_count": 0, "tummy_duration_min": 0, "bath_count": 0, "bath_duration_min": 0, "events": [{"time": "00:42", "raw": "母乳    右15分钟", "type": "breast", "right_min": 15, "start": "00:42", "end": "00:57"}, {"time": "00:57", "raw": "换尿布 = Mia", "type": "diaper", "detail": ""}, {"time": "02:47", "raw": "B 配方奶 130ml", "type": "formula", "amount": 130}, {"time": "02:48", "raw": "换尿布 Nl", "type": "diaper", "detail": ""}, {"time": "07:21", "raw": "B 配方奶 40ml", "type": "formula", "amount": 40}, {"time": "07:43", "raw": "营养补剂 维生素D3 1粒", "type": "supplement", "detail": "维生素D3 1粒"}, {"time": "16:36", "raw": "®@ 瓶喂母乳 50ml", "type": "bottle_breast", "amount": 50}, {"time": "18:42", "raw": "配方奶 60ml", "type": "formula", "amount": 60}, {"time": "20:03", "raw": "换尿布 9 右右+Mil 黄绿色、稀…   攻", "type": "diaper", "detail": "9 右右 黄绿色、稀… 攻"}, {"time": "20:25", "raw": "B 配方奶 380ml", "type": "formula", "amount": 380}, {"time": "22:45", "raw": "B 配方奶 90ml", "type": "formula", "amount": 90}], "total_milk_ml": 975, "breast_duration_h": 0.8, "sleep_duration_h": 0}, {"date": "2026-07-20", "label": "7月20日", "day_num": 46, "formula_count": 7, "formula_amount": 610, "bottle_breast_count": 1, "bottle_breast_amount": 110, "breast_count": 4, "breast_duration_min": 60, "sleep_count": 0, "sleep_duration_min": 0, "diaper_count": 4, "supplement_count": 2, "other_count": 0, "other_duration_min": 0, "tummy_count": 0, "tummy_duration_min": 0, "bath_count": 0, "bath_duration_min": 0, "events": [{"time": "00:16", "raw": "®@ 瓶喂母乳 20ml", "type": "bottle_breast", "amount": 20}, {"time": "00:20", "raw": "换尿布 = Md          Insta360", "type": "diaper", "detail": "Insta360"}, {"time": "02:30", "raw": "母乳    右18分钟", "type": "breast", "right_min": 18}, {"time": "02:50", "raw": "换尿布 Mil", "type": "diaper", "detail": ""}, {"time": "05:10", "raw": "母乳   右5分钟*左3分钟", "type": "breast", "right_min": 5, "start": "05:10", "end": "05:19"}, {"time": "17:53", "raw": "§ 配方奶 20ml", "type": "formula", "amount": 20}, {"time": "17:53", "raw": "O 营养补剂 K1 1粒", "type": "supplement", "detail": "K1 1粒"}, {"time": "18:55", "raw": "换尿布 lee", "type": "diaper", "detail": ""}, {"time": "18:55", "raw": "配方奶 170ml", "type": "formula", "amount": 170}, {"time": "19:44", "raw": "母乳   右24分钟", "type": "breast", "right_min": 24}, {"time": "23:53", "raw": "各 母乳    左10 分钟", "type": "breast", "left_min": 10}], "total_milk_ml": 720, "breast_duration_h": 1.0, "sleep_duration_h": 0}, {"date": "2026-07-21", "label": "7月21日", "day_num": 47, "formula_count": 12, "formula_amount": 960, "bottle_breast_count": 2, "bottle_breast_amount": 50, "breast_count": 6, "breast_duration_min": 60, "sleep_count": 3, "sleep_duration_min": 180, "diaper_count": 6, "supplement_count": 1, "other_count": 0, "other_duration_min": 0, "tummy_count": 0, "tummy_duration_min": 0, "bath_count": 1, "bath_duration_min": 20, "events": [{"time": "03:20", "raw": "®@ 瓶喂母乳 110ml", "type": "bottle_breast", "amount": 110}, {"time": "03:42", "raw": "换尿布 ENE         Insta360", "type": "diaper", "detail": "Insta360"}, {"time": "06:00", "raw": "瓶喂母乳 110ml", "type": "bottle_breast", "amount": 110}, {"time": "06:11", "raw": "换尿布 RR 黄绿色、糊状", "type": "diaper", "detail": "黄绿色、糊状"}, {"time": "20:21", "raw": "母乳   左11分钟", "type": "breast", "left_min": 11}, {"time": "20:50", "raw": "B 配方奶 120ml         e@", "type": "formula", "amount": 120}, {"time": "23:55", "raw": "换尿布 ll", "type": "diaper", "detail": ""}, {"time": "23:55", "raw": "§ 配方奶 120ml", "type": "formula", "amount": 120}], "total_milk_ml": 1010, "breast_duration_h": 1.0, "sleep_duration_h": 3.0}, {"date": "2026-07-22", "label": "7月22日", "day_num": 48, "formula_count": 8, "formula_amount": 670, "bottle_breast_count": 4, "bottle_breast_amount": 270, "breast_count": 5, "breast_duration_min": 58, "sleep_count": 2, "sleep_duration_min": 0, "diaper_count": 8, "supplement_count": 1, "other_count": 0, "other_duration_min": 0, "tummy_count": 0, "tummy_duration_min": 0, "bath_count": 0, "bath_duration_min": 0, "events": [{"time": "00:00", "raw": "母乳    左13 分钟", "type": "breast", "left_min": 13, "start": "00:00", "end": "00:13"}, {"time": "00:18", "raw": "母乳   右4分钟", "type": "breast", "right_min": 4}, {"time": "00:36", "raw": "®@ 瓶喂母乳 50ml", "type": "bottle_breast", "amount": 50}, {"time": "00:49", "raw": ", @ 换尿布 lee          Insta360", "type": "diaper", "detail": "Insta360"}, {"time": "01:03", "raw": "睡眠    睡了2小时10 分钟", "type": "sleep", "duration_min": 130, "start": "01:03", "end": "03:13"}, {"time": "18:28", "raw": "睡眠    HE 7 38 分钟", "type": "sleep"}, {"time": "19:52", "raw": "母乳   左12分钟", "type": "breast", "left_min": 12}, {"time": "21:08", "raw": "换尿布 leis         者", "type": "diaper", "detail": "者"}, {"time": "21:08", "raw": "睡眠    睡了2小时51分钟", "type": "sleep", "duration_min": 171}], "total_milk_ml": 940, "breast_duration_h": 1.0, "sleep_duration_h": 0}, {"date": "2026-07-23", "label": "7月23日", "day_num": 49, "formula_count": 11, "formula_amount": 710, "bottle_breast_count": 4, "bottle_breast_amount": 150, "breast_count": 7, "breast_duration_min": 60, "sleep_count": 1, "sleep_duration_min": 120, "diaper_count": 5, "supplement_count": 1, "other_count": 0, "other_duration_min": 0, "tummy_count": 0, "tummy_duration_min": 0, "bath_count": 0, "bath_duration_min": 0, "events": [{"time": "05:14", "raw": "母乳    右16分钟*左11分钟", "type": "breast", "right_min": 16, "start": "05:14", "end": "05:42"}, {"time": "12:06", "raw": "母乳   右8分钟", "type": "breast", "right_min": 8, "start": "12:06", "end": "12:14"}, {"time": "12:15", "raw": "母乳   右5分钟", "type": "breast", "right_min": 5, "start": "12:15", "end": "12:20"}, {"time": "14:00", "raw": "换尿布", "type": "diaper", "detail": ""}, {"time": "14:52", "raw": "换尿布 = aed", "type": "diaper", "detail": ""}, {"time": "18:21", "raw": "母乳   左11分钟         攻", "type": "breast", "left_min": 11}, {"time": "21:22", "raw": "换尿布 “ 臭臭+咕听 黄色、糊状", "type": "diaper", "detail": "臭臭 咕听 黄色、糊状"}], "total_milk_ml": 860, "breast_duration_h": 1.0, "sleep_duration_h": 2.0}, {"date": "2026-07-24", "label": "7月24日", "day_num": 50, "formula_count": 6, "formula_amount": 550, "bottle_breast_count": 0, "bottle_breast_amount": 0, "breast_count": 7, "breast_duration_min": 60, "sleep_count": 0, "sleep_duration_min": 0, "diaper_count": 2, "supplement_count": 1, "other_count": 0, "other_duration_min": 0, "tummy_count": 0, "tummy_duration_min": 0, "bath_count": 1, "bath_duration_min": 19, "events": [{"time": "01:36", "raw": "B 配方奶 120ml", "type": "formula", "amount": 120}, {"time": "01:44", "raw": "换尿布 Nl", "type": "diaper", "detail": ""}, {"time": "06:29", "raw": "换尿布 = lz", "type": "diaper", "detail": ""}, {"time": "07:50", "raw": "换尿布 Mz", "type": "diaper", "detail": ""}, {"time": "19:20", "raw": "母乳    左9分钟 右9分钟", "type": "breast", "left_min": 9, "right_min": 9}, {"time": "19:59", "raw": "B 配方奶 60ml", "type": "formula", "amount": 60}, {"time": "20:18", "raw": "换尿布 lene", "type": "diaper", "detail": ""}, {"time": "20:34", "raw": "§ 配方奶 10ml", "type": "formula", "amount": 10}, {"time": "22:40", "raw": "母乳    右10分钟*左2分钟", "type": "breast", "right_min": 10}, {"time": "22:56", "raw": "母乳    左11分钟", "type": "breast", "left_min": 11}], "total_milk_ml": 550, "breast_duration_h": 1.0, "sleep_duration_h": 0}, {"date": "2026-07-25", "label": "7月25日", "day_num": 51, "formula_count": 10, "formula_amount": 715, "bottle_breast_count": 2, "bottle_breast_amount": 190, "breast_count": 1, "breast_duration_min": 10, "sleep_count": 0, "sleep_duration_min": 0, "diaper_count": 4, "supplement_count": 1, "other_count": 0, "other_duration_min": 0, "tummy_count": 0, "tummy_duration_min": 0, "bath_count": 0, "bath_duration_min": 0, "events": [{"time": "03:06", "raw": "换尿布 Mil           人", "type": "diaper", "detail": "人"}, {"time": "03:08", "raw": "母乳    左19分钟", "type": "breast", "left_min": 19, "start": "03:08", "end": "03:27"}, {"time": "03:32", "raw": "母乳    右9分钟", "type": "breast", "right_min": 9, "start": "03:32", "end": "03:41"}, {"time": "06:00", "raw": "换尿布 = zz            Insta360", "type": "diaper", "detail": "Insta360"}, {"time": "06:43", "raw": "母乳    左8分钟 右14分4", "type": "breast", "left_min": 8, "right_min": 14, "start": "06:43", "end": "07:05    in prac oo"}, {"time": "06:43", "raw": "换尿布 = ied", "type": "diaper", "detail": ""}, {"time": "19:07", "raw": "营养补剂 维生素右D 1粒        E", "type": "supplement", "detail": "维生素右D 1粒        E"}, {"time": "19:12", "raw": "瓶喂母乳 70ml", "type": "bottle_breast", "amount": 70}, {"time": "20:07", "raw": "母乳   左3分钟 >右7 ath", "type": "breast", "left_min": 3}], "total_milk_ml": 905, "breast_duration_h": 0.2, "sleep_duration_h": 0}, {"date": "2026-07-26", "label": "7月26日", "day_num": 52, "formula_count": 8, "formula_amount": 460, "bottle_breast_count": 4, "bottle_breast_amount": 140, "breast_count": 5, "breast_duration_min": 60, "sleep_count": 0, "sleep_duration_min": 0, "diaper_count": 8, "supplement_count": 2, "other_count": 2, "other_duration_min": 37, "tummy_count": 0, "tummy_duration_min": 0, "bath_count": 0, "bath_duration_min": 0, "events": [{"time": "00:40", "raw": "换尿布 leh          Insta360", "type": "diaper", "detail": "Insta360"}, {"time": "00:50", "raw": "瓶喂母乳 60ml          @", "type": "bottle_breast", "amount": 60}, {"time": "00:52", "raw": "母乳    左5分钟", "type": "breast", "left_min": 5, "start": "00:52", "end": "00:57"}, {"time": "01:20", "raw": "趴      40 分钟", "type": "tummy", "duration_min": 40}, {"time": "03:22", "raw": "换尿布 Mie            Insta360", "type": "diaper", "detail": "Insta360"}, {"time": "03:35", "raw": "画 配方奶 90ml", "type": "formula", "amount": 90}, {"time": "04:03", "raw": "趴      6分钟", "type": "tummy", "duration_min": 6}, {"time": "17:54", "raw": "营养补剂 K1.、1粒", "type": "supplement", "detail": "K1.、1粒"}, {"time": "19:35", "raw": "换尿布 = aed          @", "type": "diaper", "detail": ""}, {"time": "20:13", "raw": "母乳    左9分钟", "type": "breast", "left_min": 9}, {"time": "20:47", "raw": "换尿布 。”臭臭+咕咕 黄色、糊状", "type": "diaper", "detail": "。”臭臭 咕咕 黄色、糊状"}], "total_milk_ml": 600, "breast_duration_h": 1.0, "sleep_duration_h": 0}, {"date": "2026-07-27", "label": "7月27日", "day_num": 53, "formula_count": 9, "formula_amount": 620, "bottle_breast_count": 3, "bottle_breast_amount": 260, "breast_count": 2, "breast_duration_min": 9, "sleep_count": 0, "sleep_duration_min": 0, "diaper_count": 2, "supplement_count": 1, "other_count": 3, "other_duration_min": 48, "tummy_count": 0, "tummy_duration_min": 0, "bath_count": 0, "bath_duration_min": 0, "events": [{"time": "00:25", "raw": "®@ 瓶喂母乳 120ml", "type": "bottle_breast", "amount": 120, "start": "00:25", "end": "00:50     e"}, {"time": "07:00", "raw": "B 配方奶 120ml", "type": "formula", "amount": 120}, {"time": "07:17", "raw": "换尿布 。 臭臭+咕咕", "type": "diaper", "detail": "臭臭 咕咕"}, {"time": "08:27", "raw": "B 配方奶 120ml", "type": "formula", "amount": 120}, {"time": "16:27", "raw": "®@ 瓶喂母乳 90ml", "type": "bottle_breast", "amount": 90}, {"time": "20:30", "raw": "配方奶 110ml", "type": "formula", "amount": 110}], "total_milk_ml": 880, "breast_duration_h": 0.1, "sleep_duration_h": 0}, {"date": "2026-07-28", "label": "7月28日", "day_num": 54, "formula_count": 7, "formula_amount": 900, "bottle_breast_count": 3, "bottle_breast_amount": 330, "breast_count": 0, "breast_duration_min": 0, "sleep_count": 0, "sleep_duration_min": 0, "diaper_count": 2, "supplement_count": 0, "other_count": 0, "other_duration_min": 0, "tummy_count": 0, "tummy_duration_min": 0, "bath_count": 0, "bath_duration_min": 0, "events": [{"time": "00:00", "raw": "® 瓶喂母乳 110ml                t )   .", "type": "bottle_breast", "amount": 110}, {"time": "03:06", "raw": "®@ 瓶喂母乳 80ml", "type": "bottle_breast", "amount": 80}, {"time": "08:45", "raw": "营养补剂 维生素右D 1粒", "type": "supplement", "detail": "维生素右D 1粒"}, {"time": "09:05", "raw": "®@ 瓶喂母乳 160ml", "type": "bottle_breast", "amount": 160}, {"time": "12:50", "raw": "瓶喂母乳 120ml", "type": "bottle_breast", "amount": 120}, {"time": "14:35", "raw": "§ 配方奶 90ml", "type": "formula", "amount": 90}, {"time": "16:40", "raw": "B 配方奶 150ml", "type": "formula", "amount": 150}, {"time": "16:49", "raw": "换尿布 R右+MN 黄色、糊状", "type": "diaper", "detail": "R右 黄色、糊状"}, {"time": "18:12", "raw": "瓶喂母乳 90ml", "type": "bottle_breast", "amount": 90}, {"time": "19:52", "raw": "冒 配方奶 180ml", "type": "formula", "amount": 180}], "total_milk_ml": 1230, "breast_duration_h": 0, "sleep_duration_h": 0}, {"date": "2026-07-29", "label": "7月29日", "day_num": 55, "formula_count": 6, "formula_amount": 590, "bottle_breast_count": 3, "bottle_breast_amount": 350, "breast_count": 2, "breast_duration_min": 27, "sleep_count": 2, "sleep_duration_min": 60, "diaper_count": 2, "supplement_count": 1, "other_count": 0, "other_duration_min": 0, "tummy_count": 0, "tummy_duration_min": 0, "bath_count": 1, "bath_duration_min": 17, "events": [{"time": "00:00", "raw": "换尿布 UN", "type": "diaper", "detail": ""}, {"time": "00:07", "raw": "母乳    左23分钟", "type": "breast", "left_min": 23, "start": "00:07", "end": "00:30"}, {"time": "00:47", "raw": "睡眠    睡了14 分钟", "type": "sleep", "duration_min": 14}, {"time": "01:01", "raw": "冒 配方奶 20ml", "type": "formula", "amount": 20}, {"time": "03:26", "raw": "母乳    右16 分钟", "type": "breast", "right_min": 16, "start": "03:26", "end": "03:42"}, {"time": "03:27", "raw": "换尿布 lal            Insta360", "type": "diaper", "detail": "Insta360"}, {"time": "17:38", "raw": "睡眠   睡了29分钟", "type": "sleep", "duration_min": 29}, {"time": "18:28", "raw": "睡眠   BET 3155", "type": "sleep"}, {"time": "20:56", "raw": "换尿布 Wee", "type": "diaper", "detail": ""}, {"time": "21:32", "raw": "§ 配方奶 110ml", "type": "formula", "amount": 110}], "total_milk_ml": 940, "breast_duration_h": 0.5, "sleep_duration_h": 1.0}, {"date": "2026-07-30", "label": "7月30日", "day_num": 56, "formula_count": 9, "formula_amount": 545, "bottle_breast_count": 1, "bottle_breast_amount": 30, "breast_count": 6, "breast_duration_min": 60, "sleep_count": 1, "sleep_duration_min": 14, "diaper_count": 7, "supplement_count": 1, "other_count": 7, "other_duration_min": 31, "tummy_count": 0, "tummy_duration_min": 0, "bath_count": 0, "bath_duration_min": 0, "events": [{"time": "02:31", "raw": "母乳   左11分钟 >“右8分钟    攻", "type": "breast", "left_min": 11, "right_min": 8, "start": "02:31", "end": "02:50"}, {"time": "05:14", "raw": "换尿布", "type": "diaper", "detail": ""}, {"time": "05:51", "raw": "母乳   右4分钟 >左12分钟", "type": "breast", "right_min": 4, "start": "05:51", "end": "06:07"}, {"time": "07:30", "raw": "母乳    左10 分钟", "type": "breast", "left_min": 10, "start": "07:30", "end": "07:41"}, {"time": "07:41", "raw": "B 配方奶 40ml", "type": "formula", "amount": 40}, {"time": "08:13", "raw": "换尿布 。” 臭臭+咕咕 黄色、稀水样", "type": "diaper", "detail": "臭臭 咕咕 黄色、稀水样"}, {"time": "18:00", "raw": "换尿布 Maik", "type": "diaper", "detail": ""}, {"time": "18:23", "raw": "B 配方奶 75ml             ,", "type": "formula", "amount": 75}, {"time": "19:16", "raw": "换尿布 Niel", "type": "diaper", "detail": ""}, {"time": "23:03", "raw": "换尿布 Mae", "type": "diaper", "detail": ""}, {"time": "23:03", "raw": "§ 配方奶 120ml", "type": "formula", "amount": 120}], "total_milk_ml": 575, "breast_duration_h": 1.0, "sleep_duration_h": 0.2}, {"date": "2026-07-31", "label": "7月31日", "day_num": 57, "formula_count": 8, "formula_amount": 485, "bottle_breast_count": 0, "bottle_breast_amount": 0, "breast_count": 5, "breast_duration_min": 60, "sleep_count": 2, "sleep_duration_min": 180, "diaper_count": 7, "supplement_count": 1, "other_count": 2, "other_duration_min": 31, "tummy_count": 0, "tummy_duration_min": 0, "bath_count": 0, "bath_duration_min": 0, "events": [{"time": "00:00", "raw": "区 睡眠", "type": "sleep", "start": "00:00", "end": "01:33"}, {"time": "01:33", "raw": "母乳   右11分钟", "type": "breast", "right_min": 11, "start": "01:33", "end": "01:45"}, {"time": "01:40", "raw": "换尿布 edz         Insta360", "type": "diaper", "detail": "Insta360"}, {"time": "02:51", "raw": "睡眠   睡了2小时11分", "type": "sleep", "duration_min": 131, "start": "02:51", "end": "05:02"}, {"time": "04:37", "raw": "母乳    左8分钟", "type": "breast", "left_min": 8, "start": "04:37", "end": "04:44"}, {"time": "05:02", "raw": "换尿布 ENE            Inetes50", "type": "diaper", "detail": "Inetes50"}, {"time": "06:21", "raw": "B 配方奶 120ml", "type": "formula", "amount": 120}, {"time": "18:54", "raw": "B 配方奶 100ml", "type": "formula", "amount": 100}, {"time": "19:09", "raw": "换尿布 lel", "type": "diaper", "detail": ""}, {"time": "19:28", "raw": "睡眠   睡了3小时10 分钟", "type": "sleep", "duration_min": 190}, {"time": "22:37", "raw": "换尿布 ll", "type": "diaper", "detail": ""}, {"time": "22:42", "raw": "母乳   右1分钟 >右 40D eH", "type": "breast", "right_min": 1}, {"time": "23:22", "raw": "睡眠    睡了37分钟", "type": "sleep", "duration_min": 37}], "total_milk_ml": 485, "breast_duration_h": 1.0, "sleep_duration_h": 3.0}, {"date": "2026-08-01", "label": "8月1日", "day_num": 58, "formula_count": 7, "formula_amount": 690, "bottle_breast_count": 0, "bottle_breast_amount": 0, "breast_count": 4, "breast_duration_min": 60, "sleep_count": 4, "sleep_duration_min": 300, "diaper_count": 7, "supplement_count": 1, "other_count": 4, "other_duration_min": 33, "tummy_count": 0, "tummy_duration_min": 0, "bath_count": 0, "bath_duration_min": 0, "events": [{"time": "00:00", "raw": "睡眠    睡了1小时36分钟", "type": "sleep", "duration_min": 96, "start": "00:00", "end": "01:35"}, {"time": "01:35", "raw": "换尿布 “”咕咕", "type": "diaper", "detail": "“”咕咕"}, {"time": "01:42", "raw": "母乳    左12分钟“右2分钟", "type": "breast", "left_min": 12, "right_min": 2, "start": "01:42", "end": "01:57"}, {"time": "05:26", "raw": "换尿布 = Niel", "type": "diaper", "detail": ""}, {"time": "05:29", "raw": "母乳    右12分钟 左8分钟", "type": "breast", "right_min": 12, "start": "05:29", "end": "05:54"}, {"time": "06:30", "raw": "O 营养补剂 维生素右D 1粒", "type": "supplement", "detail": "维生素右D 1粒"}, {"time": "18:42", "raw": "换尿布 “”咕咕", "type": "diaper", "detail": "“”咕咕"}, {"time": "22:43", "raw": "换尿布 ”咕咕           r )", "type": "diaper", "detail": "”咕咕"}, {"time": "22:44", "raw": "B 配方奶 120ml", "type": "formula", "amount": 120}, {"time": "23:04", "raw": "睡眠    睡了55 分钟          j", "type": "sleep", "duration_min": 55}], "total_milk_ml": 690, "breast_duration_h": 1.0, "sleep_duration_h": 5.0}, {"date": "2026-08-02", "label": "8月2日", "day_num": 59, "formula_count": 5, "formula_amount": 420, "bottle_breast_count": 1, "bottle_breast_amount": 50, "breast_count": 6, "breast_duration_min": 60, "sleep_count": 3, "sleep_duration_min": 420, "diaper_count": 8, "supplement_count": 1, "other_count": 1, "other_duration_min": 4, "tummy_count": 0, "tummy_duration_min": 0, "bath_count": 0, "bath_duration_min": 0, "events": [{"time": "00:00", "raw": "睡眠    00:00-00:00", "type": "sleep", "start": "00:00", "end": "00:09"}, {"time": "00:05", "raw": "换尿布 “”咕咕", "type": "diaper", "detail": "“”咕咕"}, {"time": "02:24", "raw": "母乳    右8分钟", "type": "breast", "right_min": 8, "start": "02:24", "end": "02:32"}, {"time": "02:24", "raw": "换尿布 ahi            Insta360", "type": "diaper", "detail": "Insta360"}, {"time": "03:19", "raw": "换尿布 Mil", "type": "diaper", "detail": ""}, {"time": "04:10", "raw": "区 睡眠     睡了2小时1分钟   Insta360", "type": "sleep", "duration_min": 121}, {"time": "16:31", "raw": "换尿布 ele", "type": "diaper", "detail": ""}, {"time": "16:31", "raw": "®@ 瓶喂母乳 50ml", "type": "bottle_breast", "amount": 50}, {"time": "18:00", "raw": "B 配方奶 90ml", "type": "formula", "amount": 90}, {"time": "20:38", "raw": "睡眠    RES 3/\\\\右y 22 24h", "type": "sleep"}], "total_milk_ml": 470, "breast_duration_h": 1.0, "sleep_duration_h": 7.0}, {"date": "2026-08-03", "label": "8月3日", "day_num": 60, "formula_count": 5, "formula_amount": 490, "bottle_breast_count": 1, "bottle_breast_amount": 30, "breast_count": 3, "breast_duration_min": 44, "sleep_count": 4, "sleep_duration_min": 180, "diaper_count": 9, "supplement_count": 0, "other_count": 2, "other_duration_min": 4, "tummy_count": 0, "tummy_duration_min": 0, "bath_count": 0, "bath_duration_min": 0, "events": [{"time": "00:30", "raw": "瓶喂母乳 120ml", "type": "bottle_breast", "amount": 120}, {"time": "03:00", "raw": "母乳       分钟 右5分钟", "type": "breast", "right_min": 5}, {"time": "03:00", "raw": "换尿布 “”咕咕", "type": "diaper", "detail": "“”咕咕"}, {"time": "04:56", "raw": "换尿布 ”咕咕", "type": "diaper", "detail": "”咕咕"}, {"time": "04:56", "raw": "B 配方奶 50ml          Insta360", "type": "formula", "amount": 50}, {"time": "06:13", "raw": "换尿布 臭臭+咕咕 黄绿色、糊状", "type": "diaper", "detail": "臭臭 咕咕 黄绿色、糊状"}, {"time": "15:31", "raw": "睡眠   睡了11分钟", "type": "sleep", "duration_min": 11}, {"time": "15:50", "raw": "其他事件 3分钟", "type": "other", "duration_min": 3}, {"time": "19:04", "raw": "换尿布 “”咕咕", "type": "diaper", "detail": "“”咕咕"}, {"time": "23:08", "raw": "换尿布 Nake", "type": "diaper", "detail": ""}], "total_milk_ml": 520, "breast_duration_h": 0.7, "sleep_duration_h": 3.0}, {"date": "2026-08-04", "label": "8月4日", "day_num": 61, "formula_count": 7, "formula_amount": 580, "bottle_breast_count": 3, "bottle_breast_amount": 250, "breast_count": 3, "breast_duration_min": 52, "sleep_count": 0, "sleep_duration_min": 0, "diaper_count": 5, "supplement_count": 1, "other_count": 0, "other_duration_min": 0, "tummy_count": 0, "tummy_duration_min": 0, "bath_count": 0, "bath_duration_min": 0, "events": [{"time": "02:51", "raw": "换尿布 lz             e", "type": "diaper", "detail": ""}, {"time": "02:51", "raw": "®@ 瓶喂母乳 90ml", "type": "bottle_breast", "amount": 90}, {"time": "02:58", "raw": "冒 配方奶 60ml", "type": "formula", "amount": 60}, {"time": "06:30", "raw": "冒 配方奶 110ml", "type": "formula", "amount": 110}, {"time": "07:46", "raw": "母乳    左13 分钟", "type": "breast", "left_min": 13, "start": "07:46", "end": "07:59"}, {"time": "10:24", "raw": "O 营养补剂 维生素D3 1粒", "type": "supplement", "detail": "维生素D3 1粒"}, {"time": "12:00", "raw": "母乳    右7 Dit >右 3分钟", "type": "breast", "right_min": 3, "start": "12:00", "end": "12:12"}, {"time": "14:00", "raw": "换尿布 iz", "type": "diaper", "detail": ""}, {"time": "18:15", "raw": "B 配方奶 150ml", "type": "formula", "amount": 150}, {"time": "20:54", "raw": "§ 配方奶 90ml               攻", "type": "formula", "amount": 90}, {"time": "23:50", "raw": "瓶喂母乳 100ml", "type": "bottle_breast", "amount": 100}], "total_milk_ml": 830, "breast_duration_h": 0.9, "sleep_duration_h": 0}, {"date": "2026-08-05", "label": "8月5日", "day_num": 62, "formula_count": 5, "formula_amount": 510, "bottle_breast_count": 2, "bottle_breast_amount": 120, "breast_count": 4, "breast_duration_min": 54, "sleep_count": 1, "sleep_duration_min": 49, "diaper_count": 3, "supplement_count": 1, "other_count": 0, "other_duration_min": 0, "tummy_count": 0, "tummy_duration_min": 0, "bath_count": 0, "bath_duration_min": 0, "events": [{"time": "00:00", "raw": "区 睡眠    睡了1小时43 54h  @", "type": "sleep", "duration_min": 60, "start": "00:00", "end": "01:43         ,"}, {"time": "05:37", "raw": "母乳    右9分钟*左12分钟", "type": "breast", "right_min": 9, "start": "05:37", "end": "05:58"}, {"time": "05:45", "raw": "换尿布 Nz", "type": "diaper", "detail": ""}, {"time": "08:24", "raw": ", @ 换尿布 lee", "type": "diaper", "detail": ""}, {"time": "18:40", "raw": "B 配方奶 120ml", "type": "formula", "amount": 120}, {"time": "20:06", "raw": "换尿布 = R右+MI 黄绿色、糊状", "type": "diaper", "detail": "R右 黄绿色、糊状"}, {"time": "20:18", "raw": "母乳    左12分钟 右13 分钟", "type": "breast", "left_min": 12, "right_min": 13}, {"time": "21:56", "raw": "换尿布 NN", "type": "diaper", "detail": ""}, {"time": "22:09", "raw": "B 配方奶 100ml         @", "type": "formula", "amount": 100}, {"time": "23:10", "raw": "睡眠   RE 49 分钟", "type": "sleep"}], "total_milk_ml": 630, "breast_duration_h": 0.9, "sleep_duration_h": 0.8}, {"date": "2026-08-06", "label": "8月6日", "day_num": 63, "formula_count": 7, "formula_amount": 440, "bottle_breast_count": 3, "bottle_breast_amount": 90, "breast_count": 6, "breast_duration_min": 60, "sleep_count": 3, "sleep_duration_min": 180, "diaper_count": 5, "supplement_count": 1, "other_count": 1, "other_duration_min": 8, "tummy_count": 0, "tummy_duration_min": 0, "bath_count": 0, "bath_duration_min": 0, "events": [{"time": "02:50", "raw": "换尿布 Miz", "type": "diaper", "detail": ""}, {"time": "02:52", "raw": "母乳    右21分钟", "type": "breast", "right_min": 21, "start": "02:52", "end": "03:13"}, {"time": "05:00", "raw": "换尿布 ENE          Insta360", "type": "diaper", "detail": "Insta360"}, {"time": "05:00", "raw": "瓶喂母乳 30ml", "type": "bottle_breast", "amount": 30}, {"time": "05:00", "raw": "母乳    左10 分钟", "type": "breast", "left_min": 10, "start": "05:00", "end": "05:10"}, {"time": "19:22", "raw": "睡眠    BE 57 分钟", "type": "sleep"}, {"time": "23:35", "raw": "母乳    左10 分钟", "type": "breast", "left_min": 10}, {"time": "23:51", "raw": "§ 配方奶 20ml       @ E", "type": "formula", "amount": 20}], "total_milk_ml": 530, "breast_duration_h": 1.0, "sleep_duration_h": 3.0}, {"date": "2026-08-07", "label": "8月7日", "day_num": 64, "formula_count": 5, "formula_amount": 430, "bottle_breast_count": 2, "bottle_breast_amount": 130, "breast_count": 3, "breast_duration_min": 39, "sleep_count": 0, "sleep_duration_min": 0, "diaper_count": 6, "supplement_count": 1, "other_count": 0, "other_duration_min": 0, "tummy_count": 1, "tummy_duration_min": 6, "bath_count": 0, "bath_duration_min": 0, "events": [{"time": "02:50", "raw": "换尿布 嘘嘘", "type": "diaper", "detail": "嘘嘘"}, {"time": "02:52", "raw": "母乳 右21分钟", "type": "breast", "right_min": 21, "start": "02:52", "end": "03:13"}, {"time": "05:00", "raw": "母乳 左10分钟", "type": "breast", "left_min": 10, "start": "05:00", "end": "05:10"}, {"time": "05:00", "raw": "瓶喂母乳 30ml", "type": "bottle_breast", "amount": 30, "start": "05:00", "end": "05:00"}, {"time": "05:00", "raw": "换尿布 嘘嘘", "type": "diaper", "detail": "嘘嘘"}, {"time": "07:36", "raw": "配方奶 100ml", "type": "formula", "amount": 100}, {"time": "07:50", "raw": "换尿布 嘘嘘", "type": "diaper", "detail": "嘘嘘"}, {"time": "10:08", "raw": "换尿布 臭臭+嘘嘘 黄绿色、糊状", "type": "diaper", "detail": "臭臭+嘘嘘 黄绿色、糊状"}, {"time": "10:39", "raw": "母乳 右8分钟", "type": "breast", "right_min": 8, "start": "10:39", "end": "10:47"}, {"time": "11:04", "raw": "配方奶 50ml", "type": "formula", "amount": 50}, {"time": "12:49", "raw": "趴 6分钟", "type": "tummy", "duration_min": 6, "start": "12:49", "end": "12:55"}, {"time": "13:12", "raw": "配方奶 120ml", "type": "formula", "amount": 120}, {"time": "13:33", "raw": "营养补剂 维生素D3 1粒", "type": "supplement", "detail": "维生素D3 1粒"}, {"time": "16:11", "raw": "配方奶 40ml", "type": "formula", "amount": 40}, {"time": "19:30", "raw": "配方奶 120ml", "type": "formula", "amount": 120}, {"time": "20:00", "raw": "换尿布 嘘嘘", "type": "diaper", "detail": "嘘嘘"}, {"time": "23:00", "raw": "换尿布 嘘嘘", "type": "diaper", "detail": "嘘嘘"}, {"time": "23:00", "raw": "瓶喂母乳 100ml", "type": "bottle_breast", "amount": 100, "start": "23:00", "end": "23:00"}], "total_milk_ml": 560, "breast_duration_h": 0.7, "sleep_duration_h": 0}, {"date": "2026-08-08", "label": "8月8日", "day_num": 65, "formula_count": 11, "formula_amount": 825, "bottle_breast_count": 2, "bottle_breast_amount": 160, "breast_count": 2, "breast_duration_min": 20, "sleep_count": 1, "sleep_duration_min": 59, "diaper_count": 6, "supplement_count": 1, "other_count": 0, "other_duration_min": 0, "tummy_count": 1, "tummy_duration_min": 12, "bath_count": 0, "bath_duration_min": 0, "events": [{"time": "02:00", "raw": "瓶喂母乳 110ml", "type": "bottle_breast", "amount": 110, "start": "02:00", "end": "02:00"}, {"time": "02:00", "raw": "换尿布 嘘嘘", "type": "diaper", "detail": "嘘嘘"}, {"time": "05:00", "raw": "换尿布 嘘嘘", "type": "diaper", "detail": "嘘嘘"}, {"time": "05:05", "raw": "配方奶 120ml", "type": "formula", "amount": 120}, {"time": "08:41", "raw": "母乳 右5分钟 左6分钟", "type": "breast", "right_min": 5, "left_min": 6, "start": "08:41", "end": "08:53"}, {"time": "09:10", "raw": "营养补剂 维生素AD 1粒", "type": "supplement", "detail": "维生素AD 1粒"}, {"time": "09:12", "raw": "配方奶 60ml", "type": "formula", "amount": 60}, {"time": "09:12", "raw": "瓶喂母乳 50ml", "type": "bottle_breast", "amount": 50, "start": "09:12", "end": "09:12"}, {"time": "11:00", "raw": "配方奶 40ml", "type": "formula", "amount": 40}, {"time": "11:38", "raw": "配方奶 80ml", "type": "formula", "amount": 80}, {"time": "13:03", "raw": "换尿布 嘘嘘", "type": "diaper", "detail": "嘘嘘"}, {"time": "13:32", "raw": "配方奶 70ml", "type": "formula", "amount": 70}, {"time": "14:30", "raw": "换尿布 嘘嘘", "type": "diaper", "detail": "嘘嘘"}, {"time": "14:37", "raw": "配方奶 50ml", "type": "formula", "amount": 50}, {"time": "15:50", "raw": "母乳 左3分钟 右6分钟", "type": "breast", "left_min": 3, "right_min": 6, "start": "15:50", "end": "15:59"}, {"time": "15:55", "raw": "配方奶 20ml", "type": "formula", "amount": 20}, {"time": "16:18", "raw": "趴 12分钟", "type": "tummy", "duration_min": 12, "start": "16:18", "end": "16:30"}, {"time": "18:02", "raw": "换尿布 嘘嘘", "type": "diaper", "detail": "嘘嘘"}, {"time": "18:11", "raw": "配方奶 155ml", "type": "formula", "amount": 155}, {"time": "19:12", "raw": "睡眠 59分钟", "type": "sleep", "duration_min": 59, "start": "19:12", "end": "20:11"}, {"time": "20:11", "raw": "配方奶 80ml", "type": "formula", "amount": 80}, {"time": "20:11", "raw": "换尿布 嘘嘘", "type": "diaper", "detail": "嘘嘘"}, {"time": "21:00", "raw": "配方奶 90ml", "type": "formula", "amount": 90}, {"time": "23:52", "raw": "配方奶 60ml", "type": "formula", "amount": 60}], "total_milk_ml": 985, "breast_duration_h": 0.3, "sleep_duration_h": 1.0}];
+const weeks = [{"week": "第2周", "days": 7, "avg_formula": 315, "avg_bottle_breast": 135, "avg_total_milk": 373, "avg_breast_min": 120, "avg_sleep_h": 0, "avg_diaper": 6.3, "avg_supplement": 1.7, "formula_days_count": 7, "bottle_days_count": 3, "breast_days_count": 7, "diaper_days_count": 7, "supplement_days_count": 3}, {"week": "第3周", "days": 7, "avg_formula": 414, "avg_bottle_breast": 215, "avg_total_milk": 630, "avg_breast_min": 129, "avg_sleep_h": 1.7, "avg_diaper": 3.4, "avg_supplement": 1.0, "formula_days_count": 7, "bottle_days_count": 7, "breast_days_count": 7, "diaper_days_count": 7, "supplement_days_count": 3}, {"week": "第4周", "days": 7, "avg_formula": 607, "avg_bottle_breast": 211, "avg_total_milk": 818, "avg_breast_min": 129, "avg_sleep_h": 0.4, "avg_diaper": 2.2, "avg_supplement": 1.0, "formula_days_count": 7, "bottle_days_count": 7, "breast_days_count": 7, "diaper_days_count": 6, "supplement_days_count": 2}, {"week": "第5周", "days": 7, "avg_formula": 638, "avg_bottle_breast": 139, "avg_total_milk": 777, "avg_breast_min": 111, "avg_sleep_h": 5.1, "avg_diaper": 6.0, "avg_supplement": 1.2, "formula_days_count": 7, "bottle_days_count": 7, "breast_days_count": 7, "diaper_days_count": 6, "supplement_days_count": 6}, {"week": "第6周", "days": 7, "avg_formula": 655, "avg_bottle_breast": 190, "avg_total_milk": 845, "avg_breast_min": 50, "avg_sleep_h": 4.6, "avg_diaper": 4.3, "avg_supplement": 1.0, "formula_days_count": 7, "bottle_days_count": 7, "breast_days_count": 7, "diaper_days_count": 7, "supplement_days_count": 7}, {"week": "第7周", "days": 7, "avg_formula": 781, "avg_bottle_breast": 125, "avg_total_milk": 906, "avg_breast_min": 55, "avg_sleep_h": 2.5, "avg_diaper": 5.3, "avg_supplement": 1.1, "formula_days_count": 7, "bottle_days_count": 7, "breast_days_count": 7, "diaper_days_count": 7, "supplement_days_count": 7}, {"week": "第8周", "days": 7, "avg_formula": 626, "avg_bottle_breast": 217, "avg_total_milk": 811, "avg_breast_min": 38, "avg_sleep_h": 0.6, "avg_diaper": 3.9, "avg_supplement": 1.2, "formula_days_count": 7, "bottle_days_count": 6, "breast_days_count": 6, "diaper_days_count": 7, "supplement_days_count": 6}, {"week": "第9周", "days": 7, "avg_formula": 516, "avg_bottle_breast": 108, "avg_total_milk": 594, "avg_breast_min": 56, "avg_sleep_h": 3.6, "avg_diaper": 6.3, "avg_supplement": 1.0, "formula_days_count": 7, "bottle_days_count": 5, "breast_days_count": 7, "diaper_days_count": 7, "supplement_days_count": 6}, {"week": "第10周", "days": 2, "avg_formula": 628, "avg_bottle_breast": 145, "avg_total_milk": 772, "avg_breast_min": 30, "avg_sleep_h": 1.0, "avg_diaper": 6.0, "avg_supplement": 1.0, "formula_days_count": 2, "bottle_days_count": 2, "breast_days_count": 2, "diaper_days_count": 2, "supplement_days_count": 2}];
+const labels = ["6月12日", "6月13日", "6月14日", "6月15日", "6月16日", "6月17日", "6月18日", "6月19日", "6月20日", "6月21日", "6月22日", "6月23日", "6月24日", "6月25日", "6月26日", "6月27日", "6月28日", "6月29日", "6月30日", "7月1日", "7月2日", "7月3日", "7月4日", "7月5日", "7月6日", "7月7日", "7月8日", "7月9日", "7月10日", "7月11日", "7月12日", "7月13日", "7月14日", "7月15日", "7月16日", "7月17日", "7月18日", "7月19日", "7月20日", "7月21日", "7月22日", "7月23日", "7月24日", "7月25日", "7月26日", "7月27日", "7月28日", "7月29日", "7月30日", "7月31日", "8月1日", "8月2日", "8月3日", "8月4日", "8月5日", "8月6日", "8月7日", "8月8日"];
+const typeLabels = {"formula": "配方奶", "bottle_breast": "瓶喂母乳", "breast": "母乳亲喂", "sleep": "睡眠", "diaper": "换尿布", "supplement": "营养补剂", "other": "其他事件", "tummy": "趴", "bath": "洗澡"};
+const typeColors = {"formula": "#FF9F7F", "bottle_breast": "#FF6B9D", "breast": "#37A2EB", "sleep": "#9B59B6", "diaper": "#F4D03F", "supplement": "#58D68D", "other": "#85929E", "tummy": "#1ABC9C", "bath": "#E74C3C"};
+const typeIcons = {"formula": "🍼", "bottle_breast": "🥛", "breast": "🤱", "sleep": "😴", "diaper": "👶", "supplement": "💊", "other": "📋", "tummy": "🧘", "bath": "🛁"};
+const insights = [{"category": "奶量摄入", "status": "warning", "tag": "需关注", "text": "近7天日均奶量 646ml，较上周下降 16.2%。奶量明显下降，建议关注宝宝是否有不适或厌奶期。", "icon": "🍼"}, {"category": "母乳亲喂", "status": "normal", "tag": "稳定", "text": "近7天日均亲喂 47分钟，较上周 +15.0%，基本稳定。", "icon": "🤱"}, {"category": "排泄情况", "status": "normal", "tag": "正常", "text": "近7天日均换尿布 6.0 次，处于正常范围（6-10次/天）。排泄规律良好。", "icon": "👶"}, {"category": "成长趋势", "status": "trend_up", "tag": "成长趋势", "text": "从记录初期到现在，日均奶量从 373ml 增长到 646ml（+73.3%）。宝宝奶量增长显著，生长势头良好。", "icon": "📈"}, {"category": "喂养模式", "status": "normal", "tag": "以配方奶为主", "text": "近7天配方奶占比 82%，瓶喂母乳 18%，日均亲喂 47分钟。混合喂养中配方奶为主。", "icon": "🍼"}];
+
+function fmtNum(n) { return (n === undefined || n === null || n === 0) ? '-' : n; }
+
+Chart.defaults.color = getComputedStyle(document.documentElement).getPropertyValue('--chart-text').trim() || '#94a3b8';
+Chart.defaults.borderColor = getComputedStyle(document.documentElement).getPropertyValue('--chart-border').trim() || '#334155';
+
+const xAxisOpts = { ticks: { maxRotation: 45, minRotation: 45 } };
+
+// Chart 1: Formula
+new Chart(document.getElementById('formulaChart'), {
+  type: 'bar',
+  data: { labels: labels, datasets: [
+    { label: '配方奶 (ml)', data: [125, 420, 400, 301, 320, 260, 380, 250, 380, 480, 510, 435, 330, 515, 510, 725, 470, 580, 605, 640, 720, 750, 790, 615, 650, 410, 690, 560, 760, 680, 640, 540, 840, 625, 500, 890, 810, 815, 610, 960, 670, 710, 550, 715, 460, 620, 900, 590, 545, 485, 690, 420, 490, 580, 510, 440, 430, 825], backgroundColor: typeColors.formula },
+    { type: 'line', label: '7日平均', data: [125.0, 272.5, 315.0, 311.5, 313.2, 304.3, 315.1, 333.0, 327.3, 338.7, 368.6, 385.0, 395.0, 414.3, 451.4, 500.7, 499.3, 509.3, 533.6, 577.9, 607.1, 641.4, 650.7, 671.4, 681.4, 653.6, 660.7, 637.9, 639.3, 623.6, 627.1, 611.4, 672.9, 663.6, 655.0, 673.6, 692.1, 717.1, 727.1, 744.3, 750.7, 780.7, 732.1, 718.6, 667.9, 669.3, 660.7, 649.3, 625.7, 616.4, 612.9, 607.1, 588.6, 542.9, 531.4, 516.4, 508.6, 527.9], borderColor: '#60a5fa', borderWidth: 2, pointRadius: 0, tension: 0.4 }
+  ]},
+  options: { responsive: true, scales: { x: xAxisOpts, y: { beginAtZero: true, title: { display: true, text: '毫升' } } } }
+});
+
+// Chart 2: Bottle breast
+new Chart(document.getElementById('bottleChart'), {
+  type: 'bar',
+  data: { labels: labels, datasets: [
+    { label: '瓶喂母乳 (ml)', data: [0, 0, 0, 0, 40, 210, 155, 170, 120, 271, 265, 160, 246, 275, 270, 195, 220, 200, 205, 170, 215, 140, 190, 135, 90, 135, 90, 195, 190, 210, 85, 345, 200, 210, 90, 70, 65, 160, 110, 50, 270, 150, 0, 190, 140, 260, 330, 350, 30, 0, 0, 50, 30, 250, 120, 90, 130, 160], backgroundColor: typeColors.bottle_breast },
+    { type: 'line', label: '7日平均', data: [0.0, 0.0, 0.0, 0.0, 8.0, 41.7, 57.9, 82.1, 99.3, 138.0, 175.9, 193.0, 198.1, 215.3, 229.6, 240.3, 233.0, 223.7, 230.1, 219.3, 210.7, 192.1, 191.4, 179.3, 163.6, 153.6, 142.1, 139.3, 146.4, 149.3, 142.1, 178.6, 187.9, 205.0, 190.0, 172.9, 152.1, 162.9, 129.3, 107.9, 116.4, 125.0, 115.0, 132.9, 130.0, 151.4, 191.4, 202.9, 185.7, 185.7, 158.6, 145.7, 112.9, 101.4, 68.6, 77.1, 95.7, 118.6], borderColor: '#60a5fa', borderWidth: 2, pointRadius: 0, tension: 0.4 }
+  ]},
+  options: { responsive: true, scales: { x: xAxisOpts, y: { beginAtZero: true, title: { display: true, text: '毫升' } } } }
+});
+
+// Chart 3: Breast feeding duration
+new Chart(document.getElementById('breastChart'), {
+  type: 'bar',
+  data: { labels: labels, datasets: [
+    { label: '亲喂时长 (min)', data: [60, 180, 180, 120, 60, 120, 120, 60, 120, 120, 120, 180, 180, 120, 180, 120, 120, 180, 120, 120, 60, 120, 120, 120, 120, 180, 60, 60, 60, 56, 15, 60, 60, 39, 60, 39, 60, 51, 60, 60, 58, 60, 60, 10, 60, 9, 0, 27, 60, 60, 60, 60, 44, 52, 54, 60, 39, 20], backgroundColor: typeColors.breast },
+    { type: 'line', label: '7日平均', data: [60.0, 120.0, 140.0, 135.0, 120.0, 120.0, 120.0, 120.0, 111.4, 102.9, 102.9, 120.0, 128.6, 128.6, 145.7, 145.7, 145.7, 154.3, 145.7, 137.1, 128.6, 120.0, 120.0, 120.0, 111.4, 120.0, 111.4, 111.4, 102.9, 93.7, 78.7, 70.1, 53.0, 50.0, 50.0, 47.0, 47.6, 52.7, 52.7, 52.7, 55.4, 55.4, 58.4, 51.3, 52.6, 45.3, 36.7, 32.3, 32.3, 32.3, 39.4, 39.4, 44.4, 51.9, 55.7, 55.7, 52.7, 47.0], borderColor: '#60a5fa', borderWidth: 2, pointRadius: 0, tension: 0.4 }
+  ]},
+  options: { responsive: true, scales: { x: xAxisOpts, y: { beginAtZero: true, title: { display: true, text: '分钟' } } } }
+});
+
+// Chart 4: Diaper
+new Chart(document.getElementById('diaperChart'), {
+  type: 'bar',
+  data: { labels: labels, datasets: [
+    { label: '换尿布次数', data: [3, 8, 8, 6, 8, 7, 4, 4, 5, 6, 3, 4, 1, 1, 3, 1, 1, 4, 3, 1, 0, 1, 5, 0, 3, 10, 8, 9, 5, 7, 3, 3, 5, 3, 4, 8, 5, 1, 4, 6, 8, 5, 2, 4, 8, 2, 2, 2, 7, 7, 7, 8, 9, 5, 3, 5, 6, 6], backgroundColor: typeColors.diaper },
+    { type: 'line', label: '7日平均', data: [3.0, 5.5, 6.3, 6.2, 6.6, 6.7, 6.3, 6.4, 6.0, 5.7, 5.3, 4.7, 3.9, 3.4, 3.3, 2.7, 2.0, 2.1, 2.0, 2.0, 1.9, 1.6, 2.1, 2.0, 1.9, 2.9, 3.9, 5.1, 5.7, 6.0, 6.4, 6.4, 5.7, 5.0, 4.3, 4.7, 4.4, 4.1, 4.3, 4.4, 5.1, 5.3, 4.4, 4.3, 5.3, 5.0, 4.4, 3.6, 3.9, 4.6, 5.0, 5.0, 6.0, 6.4, 6.6, 6.3, 6.1, 6.0], borderColor: '#60a5fa', borderWidth: 2, pointRadius: 0, tension: 0.4 }
+  ]},
+  options: { responsive: true, scales: { x: xAxisOpts, y: { beginAtZero: true, ticks: { stepSize: 1 } } } }
+});
+
+// Chart 5: Supplement
+new Chart(document.getElementById('supplementChart'), {
+  type: 'bar',
+  data: { labels: labels, datasets: [
+    { label: '营养补剂 (次)', data: [0, 0, 2, 0, 2, 1, 0, 0, 0, 1, 1, 0, 1, 0, 0, 0, 0, 1, 0, 0, 1, 1, 1, 2, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 2, 1, 0, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1], backgroundColor: typeColors.supplement },
+    { type: 'line', label: '7日平均', data: [0.0, 0.0, 0.7, 0.5, 0.8, 0.8, 0.7, 0.7, 0.7, 0.6, 0.7, 0.4, 0.4, 0.4, 0.4, 0.4, 0.3, 0.3, 0.3, 0.1, 0.3, 0.4, 0.6, 0.9, 0.7, 0.9, 1.0, 1.0, 1.0, 1.0, 0.9, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.1, 1.1, 1.1, 1.1, 1.1, 1.1, 1.3, 1.1, 1.0, 1.0, 1.0, 1.0, 1.0, 0.9, 0.7, 0.9, 0.9, 0.9, 0.9, 0.9], borderColor: '#60a5fa', borderWidth: 2, pointRadius: 0, tension: 0.4 }
+  ]},
+  options: { responsive: true, scales: { x: xAxisOpts, y: { beginAtZero: true, ticks: { stepSize: 1 } } } }
+});
+
+// Pie chart: feeding source breakdown (optimized)
+const pieData = [
+  { label: '配方奶', value: 33121, color: '#FF9F7F', cans: 6.2 },
+  { label: '瓶喂母乳', value: 8697, color: '#FF6B9D', cans: 1.6 },
+  { label: '母乳亲喂（估）', value: 15620, color: '#37A2EB', cans: 2.9 },
+  { label: '辅食', value: 0, color: '#1ABC9C', cans: 0 },
+];
+const pieFiltered = pieData.filter(d => d.value > 0);
+const pieTotal = 57438;
+const pieTotalCans = 10.8;
+
+// Center text plugin
+const centerTextPlugin = {
+  id: 'centerText',
+  afterDraw: function(chart) {
+    const { ctx, chartArea } = chart;
+    if (!chartArea) return;
+    ctx.save();
+    const cx = (chartArea.left + chartArea.right) / 2;
+    const cy = (chartArea.top + chartArea.bottom) / 2;
+    const textColor = getComputedStyle(document.documentElement).getPropertyValue('--text').trim() || '#f1f5f9';
+    const subColor = getComputedStyle(document.documentElement).getPropertyValue('--muted').trim() || '#64748b';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.font = 'bold 26px sans-serif';
+    ctx.fillStyle = textColor;
+    ctx.fillText(pieTotal.toLocaleString() + ' ml', cx, cy - 14);
+    ctx.font = '13px sans-serif';
+    ctx.fillStyle = subColor;
+    ctx.fillText('\u2248 ' + pieTotalCans + ' \u7f50\u5976\u7c89', cx, cy + 14);
+    ctx.restore();
+  }
+};
+
+// Percentage label plugin
+const pctLabelPlugin = {
+  id: 'pctLabels',
+  afterDraw: function(chart) {
+    const { ctx } = chart;
+    const meta = chart.getDatasetMeta(0);
+    meta.data.forEach((arc, i) => {
+      const val = chart.data.datasets[0].data[i];
+      if (val === 0) return;
+      const pct = (val / pieTotal * 100).toFixed(1);
+      const pos = arc.tooltipPosition();
+      ctx.save();
+      ctx.font = 'bold 14px sans-serif';
+      ctx.fillStyle = '#fff';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(pct + '%', pos.x, pos.y);
+      ctx.restore();
+    });
+  }
+};
+
+new Chart(document.getElementById('pieChart'), {
+  type: 'doughnut',
+  data: {
+    labels: pieFiltered.map(d => d.label),
+    datasets: [{
+      data: pieFiltered.map(d => d.value),
+      backgroundColor: pieFiltered.map(d => d.color),
+      borderColor: getComputedStyle(document.documentElement).getPropertyValue('--chart-border').trim() || '#334155',
+      borderWidth: 3,
+      hoverOffset: 12,
+    }]
+  },
+  options: {
+    responsive: true,
+    cutout: '60%',
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        callbacks: {
+          label: function(ctx) {
+            const pct = (ctx.parsed / pieTotal * 100).toFixed(1);
+            return ctx.label + ': ' + ctx.parsed.toLocaleString() + ' ml (' + pct + '%)';
+          }
+        }
+      }
+    }
+  },
+  plugins: [centerTextPlugin, pctLabelPlugin]
+});
+
+// Custom legend with values
+const pieLegendEl = document.getElementById('pieLegend');
+pieFiltered.forEach(d => {
+  const pct = (d.value / pieTotal * 100).toFixed(1);
+  const div = document.createElement('div');
+  div.className = 'flex items-center justify-between';
+  div.innerHTML = 
+    '<div class="flex items-center gap-3">' +
+      '<span style="display:inline-block;width:14px;height:14px;border-radius:4px;background:' + d.color + '"></span>' +
+      '<span class="text-sm font-medium">' + d.label + '</span>' +
+    '</div>' +
+    '<div class="text-right">' +
+      '<span class="text-sm font-bold">' + d.value.toLocaleString() + ' ml</span>' +
+      ' <span class="text-xs text-gray-500">(' + pct + '%)</span>' +
+      (d.cans > 0 ? '<div class="text-xs text-gray-400">\u2248 ' + d.cans + ' \u7f50\u5976\u7c89</div>' : '') +
+    '</div>';
+  pieLegendEl.appendChild(div);
+});
+
+const weekBody = document.getElementById('weekTableBody');
+weeks.forEach(w => {
+  weekBody.innerHTML += `<tr class="border-b border-slate-800 hover:bg-slate-800/50"><td class="py-2">${w.week}</td><td class="text-right">${w.days}</td><td class="text-right">${w.avg_formula || '-'}</td><td class="text-right">${w.avg_bottle_breast || '-'}</td><td class="text-right font-semibold text-blue-400">${w.avg_total_milk || '-'}</td><td class="text-right">${w.avg_breast_min || '-'}</td><td class="text-right">${w.avg_diaper || '-'}</td><td class="text-right">${w.avg_supplement || '-'}</td></tr>`;
+});
+
+// === Weekly average charts ===
+const weekLabels = weeks.map(w => w.week);
+
+const weekChartOpts = {
+  responsive: true,
+  plugins: { legend: { display: false } },
+  scales: {
+    x: { ticks: { maxRotation: 0 } },
+    y: { beginAtZero: true }
+  }
+};
+
+new Chart(document.getElementById('weekFormulaChart'), {
+  type: 'bar',
+  data: { labels: weekLabels, datasets: [{
+    label: '周均配方奶 (ml/天)',
+    data: weeks.map(w => w.avg_formula),
+    backgroundColor: typeColors.formula,
+    borderRadius: 6
+  }]},
+  options: { ...weekChartOpts, scales: { ...weekChartOpts.scales, y: { beginAtZero: true, title: { display: true, text: '毫升' } } } }
+});
+
+new Chart(document.getElementById('weekBottleChart'), {
+  type: 'bar',
+  data: { labels: weekLabels, datasets: [{
+    label: '周均瓶喂母乳 (ml/天)',
+    data: weeks.map(w => w.avg_bottle_breast),
+    backgroundColor: typeColors.bottle_breast,
+    borderRadius: 6
+  }]},
+  options: { ...weekChartOpts, scales: { ...weekChartOpts.scales, y: { beginAtZero: true, title: { display: true, text: '毫升' } } } }
+});
+
+new Chart(document.getElementById('weekBreastChart'), {
+  type: 'bar',
+  data: { labels: weekLabels, datasets: [{
+    label: '周均亲喂 (min/天)',
+    data: weeks.map(w => w.avg_breast_min),
+    backgroundColor: typeColors.breast,
+    borderRadius: 6
+  }]},
+  options: { ...weekChartOpts, scales: { ...weekChartOpts.scales, y: { beginAtZero: true, title: { display: true, text: '分钟' } } } }
+});
+
+new Chart(document.getElementById('weekDiaperChart'), {
+  type: 'bar',
+  data: { labels: weekLabels, datasets: [{
+    label: '周均换尿布 (次/天)',
+    data: weeks.map(w => w.avg_diaper),
+    backgroundColor: typeColors.diaper,
+    borderRadius: 6
+  }]},
+  options: { ...weekChartOpts, scales: { ...weekChartOpts.scales, y: { beginAtZero: true, ticks: { stepSize: 1 } } } }
+});
+
+new Chart(document.getElementById('weekSupplementChart'), {
+  type: 'bar',
+  data: { labels: weekLabels, datasets: [{
+    label: '周均营养补剂 (次/天)',
+    data: weeks.map(w => w.avg_supplement),
+    backgroundColor: typeColors.supplement,
+    borderRadius: 6
+  }]},
+  options: { ...weekChartOpts, scales: { ...weekChartOpts.scales, y: { beginAtZero: true, ticks: { stepSize: 1 } } } }
+});
+
+// === Timeline view ===
+const timelineContainer = document.getElementById('timelineContainer');
+const colorMap = {formula: 'text-orange-400', bottle_breast: 'text-pink-400', breast: 'text-blue-400', sleep: 'text-purple-400', diaper: 'text-yellow-400', supplement: 'text-green-400', other: 'text-gray-400', tummy: 'text-teal-400', bath: 'text-red-400'};
+const dotColorMap = {formula: '#FF9F7F', bottle_breast: '#FF6B9D', breast: '#37A2EB', sleep: '#9B59B6', diaper: '#F4D03F', supplement: '#58D68D', other: '#85929E', tummy: '#1ABC9C', bath: '#E74C3C'};
+
+[...days].reverse().forEach(d => {
+  let eventsHtml = '';
+  if (d.events && d.events.length > 0) {
+    eventsHtml = d.events.map(e => {
+      let detail = '';
+      if (e.type === 'formula' || e.type === 'bottle_breast') detail = (e.amount || '?') + 'ml';
+      else if (e.type === 'breast') detail = ((e.left_min || 0) + (e.right_min || 0)) + 'min';
+      else if (e.type === 'sleep') detail = (e.duration_min || '-') + 'min';
+      else detail = e.detail || '';
+      const dot = dotColorMap[e.type] || '#85929E';
+      const cls = colorMap[e.type] || 'text-gray-300';
+      return `<div class="flex items-center gap-3 text-sm py-0.5"><span class="text-gray-500 w-12 shrink-0">${e.time}</span><span class="w-2.5 h-2.5 rounded-full shrink-0" style="background:${dot}"></span><span class="${cls} w-20 shrink-0">${typeLabels[e.type] || e.type}</span><span class="text-gray-300">${detail}</span></div>`;
+    }).join('');
+  } else {
+    eventsHtml = '<div class="text-sm text-gray-600 py-1">无事件记录</div>';
+  }
+
+  let chips = [];
+  if (d.formula_amount > 0) chips.push(`<span class="text-xs px-2 py-0.5 rounded-full" style="background:rgba(255,159,127,0.15);color:#FF9F7F">配方奶 ${d.formula_count}次/${d.formula_amount}ml</span>`);
+  if (d.bottle_breast_amount > 0) chips.push(`<span class="text-xs px-2 py-0.5 rounded-full" style="background:rgba(255,107,157,0.15);color:#FF6B9D">瓶喂母乳 ${d.bottle_breast_count}次/${d.bottle_breast_amount}ml</span>`);
+  if (d.breast_duration_min > 0) chips.push(`<span class="text-xs px-2 py-0.5 rounded-full" style="background:rgba(55,162,235,0.15);color:#37A2EB">亲喂 ${d.breast_count}次/${d.breast_duration_min}min</span>`);
+  if (d.diaper_count > 0) chips.push(`<span class="text-xs px-2 py-0.5 rounded-full" style="background:rgba(244,208,63,0.15);color:#F4D03F">尿布 ${d.diaper_count}次</span>`);
+  const chipsHtml = chips.length > 0 ? `<div class="flex flex-wrap gap-1.5 mb-2">${chips.join('')}</div>` : '';
+
+  timelineContainer.innerHTML += `<div class="timeline-day border-b border-slate-800/50 pb-3"><div class="timeline-day-dot" style="background:#3b82f6"></div><div class="flex items-baseline gap-3 mb-1"><span class="font-medium text-base">${d.label}</span><span class="text-xs text-gray-500">第${d.day_num}天</span></div>${chipsHtml}<div class="ml-4 space-y-0">${eventsHtml}</div></div>`;
+});
+
+// === Events view ===
+const eventsList = document.getElementById('eventsList');
+[...days].reverse().forEach(d => {
+  if (!d.events || d.events.length === 0) return;
+  let items = d.events.map(e => {
+    let detail = '';
+    if (e.type === 'formula' || e.type === 'bottle_breast') detail = e.amount + 'ml';
+    else if (e.type === 'breast') detail = ((e.left_min || 0) + (e.right_min || 0)) + 'min';
+    else if (e.type === 'sleep') detail = (e.duration_min || '-') + 'min';
+    else detail = e.detail || '';
+    return `<div class="flex items-center gap-3 text-sm"><span class="text-gray-500 w-12">${e.time}</span><span class="${colorMap[e.type] || 'text-gray-300'} w-20">${typeLabels[e.type] || e.type}</span><span class="text-gray-300">${detail}</span></div>`;
+  }).join('');
+  eventsList.innerHTML += `<div class="border-b border-slate-800 pb-3"><div class="font-medium mb-2">${d.label} 第${d.day_num}天</div><div class="space-y-1">${items}</div></div>`;
+});
+
+function switchView(view) {
+  ['overview', 'daily', 'events'].forEach(v => {
+    document.getElementById('view-' + v).classList.add('hidden');
+    const btn = document.getElementById('btn-' + v);
+    btn.classList.remove('active');
+    btn.classList.remove('text-white');
+  });
+  document.getElementById('view-' + view).classList.remove('hidden');
+  const activeBtn = document.getElementById('btn-' + view);
+  activeBtn.classList.add('active');
+  activeBtn.classList.add('text-white');
+}
+
+function toggleTheme() {
+  const cur = document.documentElement.getAttribute('data-theme');
+  const next = cur === 'light' ? 'dark' : 'light';
+  localStorage.setItem('theme', next);
+  location.reload();
+}
+
+// Auto-update on system theme change
+window.matchMedia('(prefers-color-scheme: light)').addEventListener('change', function(e) {
+  if (!localStorage.getItem('theme')) {
+    document.documentElement.setAttribute('data-theme', e.matches ? 'light' : 'dark');
+    location.reload();
+  }
+});
+
+// Set toggle button icon
+document.getElementById('themeBtn').textContent = document.documentElement.getAttribute('data-theme') === 'light' ? '☀️' : '🌙';
+</script>
+</body>
+</html>
