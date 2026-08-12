@@ -349,6 +349,9 @@ Chart.defaults.borderColor = getComputedStyle(document.documentElement).getPrope
 const xAxisOpts = { ticks: { maxRotation: 45, minRotation: 45 } };
 
 // Plugin: arrow follows the line as it draws from left to right
+// Shared easing function for line animation
+const easeOutQuart = (t) => 1 - Math.pow(1 - t, 4);
+
 const arrowFollowPlugin = {
   id: 'arrowFollow',
   afterDatasetsDraw(chart) {
@@ -360,11 +363,11 @@ const arrowFollowPlugin = {
     if (!path || typeof path.getTotalLength !== 'function') return;
     const totalLen = path.getTotalLength();
     if (!totalLen) return;
-    let progress = 1;
+    let raw = 1;
     if (chart.animating && chart.animation && chart.animation.numSteps > 0) {
-      progress = (chart.animation.currentStep || 0) / chart.animation.numSteps;
+      raw = (chart.animation.currentStep || 0) / chart.animation.numSteps;
     }
-    progress = Math.max(0, Math.min(1, progress));
+    const progress = easeOutQuart(Math.max(0, Math.min(1, raw)));
     const len = totalLen * progress;
     const p1 = path.getPointAtLength(len);
     const p2 = path.getPointAtLength(Math.min(totalLen, len + 1));
@@ -384,6 +387,40 @@ const arrowFollowPlugin = {
   }
 };
 Chart.register(arrowFollowPlugin);
+
+// === Line reveal plugin: clips line drawing from left to right based on animation progress ===
+const lineRevealPlugin = {
+  id: 'lineReveal',
+  beforeDatasetDraw(chart, args) {
+    const dataset = chart.data.datasets[args.index];
+    if (dataset.type !== 'line') return;
+    let raw = 1;
+    if (chart.animating && chart.animation && chart.animation.numSteps > 0) {
+      raw = (chart.animation.currentStep || 0) / chart.animation.numSteps;
+    }
+    const progress = easeOutQuart(Math.max(0, Math.min(1, raw)));
+    chart._lineRevealClipped = false;
+    if (progress < 0.999) {
+      const ctx = chart.ctx;
+      const area = chart.chartArea;
+      const w = (area.right - area.left) * progress;
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(area.left, area.top, w, area.bottom - area.top);
+      ctx.clip();
+      chart._lineRevealClipped = true;
+    }
+  },
+  afterDatasetDraw(chart, args) {
+    const dataset = chart.data.datasets[args.index];
+    if (dataset.type !== 'line') return;
+    if (chart._lineRevealClipped) {
+      chart.ctx.restore();
+      chart._lineRevealClipped = false;
+    }
+  }
+};
+Chart.register(lineRevealPlugin);
 
 function createDailyChart(canvasId, label, data, avgData, color, yOptions) {
   const zeroData = data.map(() => 0);
@@ -407,7 +444,7 @@ function createDailyChart(canvasId, label, data, avgData, color, yOptions) {
           borderWidth: 2,
           pointRadius: 0,
           tension: 0.4,
-          animation: { x: { type: 'number', duration: 1400, from: NaN, easing: 'easeOutQuart' }, y: { duration: 1000, from: 0, easing: 'easeOutQuart' }, duration: 1400 }
+          animation: { duration: 1400, easing: 'easeOutQuart' }
         }
       ]
     },
