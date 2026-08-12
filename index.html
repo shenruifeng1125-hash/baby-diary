@@ -470,7 +470,8 @@ pieFiltered.forEach(d => {
 // === Weekly stats cards ===
 const weekGrid = document.getElementById('weekCardGrid');
 const maxMilk = Math.max(...weeks.map(w => w.avg_total_milk || 0), 1);
-weeks.forEach((w, idx) => {
+[...weeks].reverse().forEach((w) => {
+  const idx = weeks.indexOf(w);
   const prev = weeks[idx - 1];
   const changePct = prev && prev.avg_total_milk ? Math.round((w.avg_total_milk - prev.avg_total_milk) / prev.avg_total_milk * 100) : null;
   const changeHtml = changePct !== null
