@@ -360,8 +360,12 @@ const arrowFollowPlugin = {
     if (!path || typeof path.getTotalLength !== 'function') return;
     const totalLen = path.getTotalLength();
     if (!totalLen) return;
-    const progress = typeof cfg.progress === 'number' ? cfg.progress : 1;
-    const len = totalLen * Math.max(0, Math.min(1, progress));
+    let progress = 1;
+    if (chart.animating && chart.animation && chart.animation.numSteps > 0) {
+      progress = (chart.animation.currentStep || 0) / chart.animation.numSteps;
+    }
+    progress = Math.max(0, Math.min(1, progress));
+    const len = totalLen * progress;
     const p1 = path.getPointAtLength(len);
     const p2 = path.getPointAtLength(Math.min(totalLen, len + 1));
     const angle = Math.atan2(p2.y - p1.y, p2.x - p1.x);
@@ -408,20 +412,7 @@ function createDailyChart(canvasId, label, data, avgData, color, yOptions) {
     },
     options: {
       responsive: true,
-      animation: {
-        duration: 1400,
-        easing: 'easeOutQuart',
-        onProgress: (anim) => {
-          const c = anim.chart;
-          c.options.plugins.arrowFollow.progress = anim.currentStep / anim.numSteps;
-          c.draw();
-        },
-        onComplete: (anim) => {
-          const c = anim.chart;
-          c.options.plugins.arrowFollow.progress = 1;
-          c.draw();
-        }
-      },
+      animation: { duration: 1400, easing: 'easeOutQuart' },
       plugins: {
         legend: { display: true },
         arrowFollow: { enabled: true, color: '#60a5fa', datasetIndex: 1 }
@@ -471,8 +462,7 @@ dailyChartTabData.forEach((t, i) => {
       dailyCharts[t.key] = chart;
     } else {
       chart.resize();
-      chart.reset();
-      chart.update();
+      chart.update('active');
     }
   });
   dailyChartTabsEl.appendChild(btn);
@@ -655,66 +645,36 @@ const weekLabels = weeks.map(w => w.week);
 const weekChartOpts = {
   responsive: true,
   plugins: { legend: { display: false } },
+  animation: { duration: 1000, easing: 'easeOutQuart', y: { from: 0 } },
   scales: {
     x: { ticks: { maxRotation: 0 } },
     y: { beginAtZero: true }
   }
 };
 
-new Chart(document.getElementById('weekFormulaChart'), {
-  type: 'bar',
-  data: { labels: weekLabels, datasets: [{
-    label: '周均配方奶 (ml/天)',
-    data: weeks.map(w => w.avg_formula),
-    backgroundColor: typeColors.formula,
-    borderRadius: 6
-  }]},
-  options: { ...weekChartOpts, scales: { ...weekChartOpts.scales, y: { beginAtZero: true, title: { display: true, text: '毫升' } } } }
-});
+function createWeekChart(canvasId, label, data, color, yOptions) {
+  return new Chart(document.getElementById(canvasId), {
+    type: 'bar',
+    data: { labels: weekLabels, datasets: [{
+      label: label,
+      data: data,
+      backgroundColor: color,
+      borderRadius: 6,
+      animation: { duration: 1000, easing: 'easeOutQuart', y: { from: 0 } }
+    }]},
+    options: { ...weekChartOpts, scales: { ...weekChartOpts.scales, ...yOptions } }
+  });
+}
 
-new Chart(document.getElementById('weekBottleChart'), {
-  type: 'bar',
-  data: { labels: weekLabels, datasets: [{
-    label: '周均瓶喂母乳 (ml/天)',
-    data: weeks.map(w => w.avg_bottle_breast),
-    backgroundColor: typeColors.bottle_breast,
-    borderRadius: 6
-  }]},
-  options: { ...weekChartOpts, scales: { ...weekChartOpts.scales, y: { beginAtZero: true, title: { display: true, text: '毫升' } } } }
-});
-
-new Chart(document.getElementById('weekBreastChart'), {
-  type: 'bar',
-  data: { labels: weekLabels, datasets: [{
-    label: '周均亲喂 (min/天)',
-    data: weeks.map(w => w.avg_breast_min),
-    backgroundColor: typeColors.breast,
-    borderRadius: 6
-  }]},
-  options: { ...weekChartOpts, scales: { ...weekChartOpts.scales, y: { beginAtZero: true, title: { display: true, text: '分钟' } } } }
-});
-
-new Chart(document.getElementById('weekDiaperChart'), {
-  type: 'bar',
-  data: { labels: weekLabels, datasets: [{
-    label: '周均换尿布 (次/天)',
-    data: weeks.map(w => w.avg_diaper),
-    backgroundColor: typeColors.diaper,
-    borderRadius: 6
-  }]},
-  options: { ...weekChartOpts, scales: { ...weekChartOpts.scales, y: { beginAtZero: true, ticks: { stepSize: 1 } } } }
-});
-
-new Chart(document.getElementById('weekSupplementChart'), {
-  type: 'bar',
-  data: { labels: weekLabels, datasets: [{
-    label: '周均营养补剂 (次/天)',
-    data: weeks.map(w => w.avg_supplement),
-    backgroundColor: typeColors.supplement,
-    borderRadius: 6
-  }]},
-  options: { ...weekChartOpts, scales: { ...weekChartOpts.scales, y: { beginAtZero: true, ticks: { stepSize: 1 } } } }
-});
+const weekCharts = { formula: null, bottle: null, breast: null, diaper: null, supplement: null };
+const weekChartConfigs = {
+  formula: { canvasId: 'weekFormulaChart', label: '周均配方奶 (ml/天)', data: weeks.map(w => w.avg_formula), color: typeColors.formula, yOptions: { y: { beginAtZero: true, title: { display: true, text: '毫升' } } } },
+  bottle: { canvasId: 'weekBottleChart', label: '周均瓶喂母乳 (ml/天)', data: weeks.map(w => w.avg_bottle_breast), color: typeColors.bottle_breast, yOptions: { y: { beginAtZero: true, title: { display: true, text: '毫升' } } } },
+  breast: { canvasId: 'weekBreastChart', label: '周均亲喂 (min/天)', data: weeks.map(w => w.avg_breast_min), color: typeColors.breast, yOptions: { y: { beginAtZero: true, title: { display: true, text: '分钟' } } } },
+  diaper: { canvasId: 'weekDiaperChart', label: '周均换尿布 (次/天)', data: weeks.map(w => w.avg_diaper), color: typeColors.diaper, yOptions: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } },
+  supplement: { canvasId: 'weekSupplementChart', label: '周均营养补剂 (次/天)', data: weeks.map(w => w.avg_supplement), color: typeColors.supplement, yOptions: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } }
+};
+weekCharts.formula = createWeekChart(weekChartConfigs.formula.canvasId, weekChartConfigs.formula.label, weekChartConfigs.formula.data, weekChartConfigs.formula.color, weekChartConfigs.formula.yOptions);
 
 // === Weekly chart tab switcher ===
 const weekChartTabData = [
@@ -726,7 +686,6 @@ const weekChartTabData = [
 ];
 const weekChartTabsEl = document.getElementById('weekChartTabs');
 const weekChartPanels = document.querySelectorAll('.week-chart-panel');
-const weekChartInstances = {};
 weekChartTabData.forEach((t, i) => {
   const btn = document.createElement('button');
   btn.className = 'btn-tab text-sm px-3 py-1.5 rounded-lg' + (i === 0 ? ' active text-white' : ' text-gray-400');
@@ -738,9 +697,15 @@ weekChartTabData.forEach((t, i) => {
     weekChartPanels.forEach(p => p.classList.add('hidden'));
     const panel = document.querySelector('.week-chart-panel[data-key="' + t.key + '"]');
     panel.classList.remove('hidden');
-    const canvas = panel.querySelector('canvas');
-    const chart = Chart.getChart(canvas);
-    if (chart) chart.resize();
+    let chart = weekCharts[t.key];
+    if (!chart) {
+      const cfg = weekChartConfigs[t.key];
+      chart = createWeekChart(cfg.canvasId, cfg.label, cfg.data, cfg.color, cfg.yOptions);
+      weekCharts[t.key] = chart;
+    } else {
+      chart.resize();
+      chart.update('active');
+    }
   });
   weekChartTabsEl.appendChild(btn);
 });
