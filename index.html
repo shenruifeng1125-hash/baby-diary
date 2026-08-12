@@ -300,16 +300,6 @@ body { background: var(--bg); color: var(--text); transition: background 0.3s, c
         </div>
         <p class="text-xs text-gray-400 leading-relaxed">近7天日均亲喂 47分钟，较上周 +15.0%，基本稳定。</p>
       </div>
-      <div class="rounded-xl border border-slate-700/40 p-4 insight-warning">
-        <div class="flex items-start justify-between mb-2">
-          <div class="flex items-center gap-2">
-            <span class="text-lg">😴</span>
-            <span class="font-medium text-sm">睡眠情况</span>
-          </div>
-          <span class="text-xs px-2 py-0.5 rounded-full tag-warning whitespace-nowrap">偏少</span>
-        </div>
-        <p class="text-xs text-gray-400 leading-relaxed">近7天日均睡眠 3.3小时，低于参考范围（14-15小时）。可能存在记录缺失，建议确认。 较上周 +7.5%。</p>
-      </div>
       <div class="rounded-xl border border-slate-700/40 p-4 insight-normal">
         <div class="flex items-start justify-between mb-2">
           <div class="flex items-center gap-2">
@@ -343,7 +333,7 @@ const labels = ["6月12日", "6月13日", "6月14日", "6月15日", "6月16日",
 const typeLabels = {"formula": "配方奶", "bottle_breast": "瓶喂母乳", "breast": "母乳亲喂", "sleep": "睡眠", "diaper": "换尿布", "supplement": "营养补剂", "other": "其他事件", "tummy": "趴", "bath": "洗澡"};
 const typeColors = {"formula": "#FF9F7F", "bottle_breast": "#FF6B9D", "breast": "#37A2EB", "sleep": "#9B59B6", "diaper": "#F4D03F", "supplement": "#58D68D", "other": "#85929E", "tummy": "#1ABC9C", "bath": "#E74C3C"};
 const typeIcons = {"formula": "🍼", "bottle_breast": "🥛", "breast": "🤱", "sleep": "😴", "diaper": "👶", "supplement": "💊", "other": "📋", "tummy": "🧘", "bath": "🛁"};
-const insights = [{"category": "奶量摄入", "status": "warning", "tag": "需关注", "text": "近7天日均 646ml，较上周 -16.2%。当前低于参考范围（700-1000ml/天），建议关注。", "icon": "🍼", "age": 65}, {"category": "母乳亲喂", "status": "normal", "tag": "稳定", "text": "近7天日均亲喂 47分钟，较上周 +15.0%，基本稳定。", "icon": "🤱"}, {"category": "喂养模式", "status": "normal", "tag": "配方奶为主", "text": "近7天配方奶 82% / 瓶喂母乳 18%，日均亲喂 47分钟。", "icon": "🍼"}, {"category": "排泄情况", "status": "normal", "tag": "正常", "text": "近7天日均换尿布 6.0 次，处于正常范围（6-10次/天）。排泄规律良好。 近7天排便 3 次。", "icon": "👶"}, {"category": "睡眠情况", "status": "warning", "tag": "偏少", "text": "近7天日均睡眠 3.3小时，低于参考范围（14-15小时）。可能存在记录缺失，建议确认。 较上周 +7.5%。", "icon": "😴"}, {"category": "营养补剂", "status": "normal", "tag": "偶尔补充", "text": "近7天补剂记录较少（日均 0.9 次）。建议按医嘱规律补充维D等营养素。", "icon": "💊"}, {"category": "成长趋势", "status": "trend_up", "tag": "成长良好", "text": "从记录初期到现在，日均奶量从 373ml 增长到 646ml（+73.3%）。宝宝奶量增长显著，生长势头良好。", "icon": "📈"}, {"category": "成长提醒 · 2-3月龄", "status": "normal", "tag": "科普", "text": "宝宝进入2月龄，奶量逐渐增加，夜奶次数可能减少。关注抬头等大运动发育。", "icon": "💡"}];
+const insights = [{"category": "奶量摄入", "status": "warning", "tag": "需关注", "text": "近7天日均 646ml，较上周 -16.2%。当前低于参考范围（700-1000ml/天），建议关注。", "icon": "🍼", "age": 65}, {"category": "母乳亲喂", "status": "normal", "tag": "稳定", "text": "近7天日均亲喂 47分钟，较上周 +15.0%，基本稳定。", "icon": "🤱"}, {"category": "喂养模式", "status": "normal", "tag": "配方奶为主", "text": "近7天配方奶 82% / 瓶喂母乳 18%，日均亲喂 47分钟。", "icon": "🍼"}, {"category": "排泄情况", "status": "normal", "tag": "正常", "text": "近7天日均换尿布 6.0 次，处于正常范围（6-10次/天）。排泄规律良好。 近7天排便 3 次。", "icon": "👶"}, {"category": "营养补剂", "status": "normal", "tag": "偶尔补充", "text": "近7天补剂记录较少（日均 0.9 次）。建议按医嘱规律补充维D等营养素。", "icon": "💊"}, {"category": "成长趋势", "status": "trend_up", "tag": "成长良好", "text": "从记录初期到现在，日均奶量从 373ml 增长到 646ml（+73.3%）。宝宝奶量增长显著，生长势头良好。", "icon": "📈"}, {"category": "成长提醒 · 2-3月龄", "status": "normal", "tag": "科普", "text": "宝宝进入2月龄，奶量逐渐增加，夜奶次数可能减少。关注抬头等大运动发育。", "icon": "💡"}];
 
 function fmtNum(n) { return (n === undefined || n === null || n === 0) ? '-' : n; }
 
