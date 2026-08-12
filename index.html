@@ -456,14 +456,10 @@ dailyChartTabData.forEach((t, i) => {
     const panel = document.querySelector('.daily-chart-panel[data-key="' + t.key + '"]');
     panel.classList.remove('hidden');
     let chart = dailyCharts[t.key];
-    if (!chart) {
-      const cfg = dailyChartConfigs[t.key];
-      chart = createDailyChart(cfg.canvasId, cfg.label, cfg.data, cfg.avgData, cfg.color, cfg.yOptions);
-      dailyCharts[t.key] = chart;
-    } else {
-      chart.resize();
-      chart.update('active');
-    }
+    if (chart) { chart.destroy(); chart = null; }
+    const cfg = dailyChartConfigs[t.key];
+    chart = createDailyChart(cfg.canvasId, cfg.label, cfg.data, cfg.avgData, cfg.color, cfg.yOptions);
+    dailyCharts[t.key] = chart;
   });
   dailyChartTabsEl.appendChild(btn);
 });
@@ -698,14 +694,10 @@ weekChartTabData.forEach((t, i) => {
     const panel = document.querySelector('.week-chart-panel[data-key="' + t.key + '"]');
     panel.classList.remove('hidden');
     let chart = weekCharts[t.key];
-    if (!chart) {
-      const cfg = weekChartConfigs[t.key];
-      chart = createWeekChart(cfg.canvasId, cfg.label, cfg.data, cfg.color, cfg.yOptions);
-      weekCharts[t.key] = chart;
-    } else {
-      chart.resize();
-      chart.update('active');
-    }
+    if (chart) { chart.destroy(); chart = null; }
+    const cfg = weekChartConfigs[t.key];
+    chart = createWeekChart(cfg.canvasId, cfg.label, cfg.data, cfg.color, cfg.yOptions);
+    weekCharts[t.key] = chart;
   });
   weekChartTabsEl.appendChild(btn);
 });
