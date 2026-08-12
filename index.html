@@ -218,33 +218,7 @@ body { background: var(--bg); color: var(--text); transition: background 0.3s, c
 
     <div class="card p-5">
       <h2 class="text-lg font-semibold mb-4">每周统计明细</h2>
-      <div class="overflow-x-auto">
-        <table class="w-full text-sm week-table">
-          <thead>
-            <tr class="text-gray-400 border-b border-slate-700/50">
-              <th class="text-left py-2 pl-2">周</th>
-              <th class="text-center py-2">天数</th>
-              <th class="text-right py-2">日均总奶量</th>
-              <th class="text-right py-2">配方奶</th>
-              <th class="text-right py-2">瓶喂母乳</th>
-              <th class="text-right py-2">亲喂</th>
-              <th class="text-right py-2">尿布</th>
-              <th class="text-right py-2 pr-2">补剂</th>
-            </tr>
-            <tr class="text-xs text-gray-500">
-              <th class="text-left py-1 pl-2 font-normal"></th>
-              <th class="text-center py-1 font-normal"></th>
-              <th class="text-right py-1 font-normal">ml/天</th>
-              <th class="text-right py-1 font-normal">ml/天</th>
-              <th class="text-right py-1 font-normal">ml/天</th>
-              <th class="text-right py-1 font-normal">min/天</th>
-              <th class="text-right py-1 font-normal">次/天</th>
-              <th class="text-right py-1 pr-2 font-normal">次/天</th>
-            </tr>
-          </thead>
-          <tbody id="weekTableBody"></tbody>
-        </table>
-      </div>
+      <div id="weekCardGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3"></div>
     </div>
   </div>
 
@@ -493,30 +467,46 @@ pieFiltered.forEach(d => {
   pieLegendEl.appendChild(div);
 });
 
-// === Weekly stats table ===
-const weekBody = document.getElementById('weekTableBody');
-const maxTotalMilk = Math.max(...weeks.map(w => w.avg_total_milk || 0), 1);
+// === Weekly stats cards ===
+const weekGrid = document.getElementById('weekCardGrid');
+const maxMilk = Math.max(...weeks.map(w => w.avg_total_milk || 0), 1);
 weeks.forEach((w, idx) => {
   const prev = weeks[idx - 1];
   const changePct = prev && prev.avg_total_milk ? Math.round((w.avg_total_milk - prev.avg_total_milk) / prev.avg_total_milk * 100) : null;
   const changeHtml = changePct !== null
-    ? `<span class="ml-1 text-xs ${changePct > 0 ? 'text-red-500' : (changePct < 0 ? 'text-green-500' : 'text-gray-500')}">${changePct > 0 ? '↑' : (changePct < 0 ? '↓' : '—')}${Math.abs(changePct)}%</span>`
+    ? `<span class="text-xs ${changePct > 0 ? 'text-red-400' : (changePct < 0 ? 'text-green-400' : 'text-gray-500')}">${changePct > 0 ? '↑' : (changePct < 0 ? '↓' : '—')}${Math.abs(changePct)}%</span>`
     : '';
-  const barWidth = Math.round((w.avg_total_milk || 0) / maxTotalMilk * 100);
+  const barWidth = Math.round((w.avg_total_milk || 0) / maxMilk * 100);
   const isLast = idx === weeks.length - 1;
-  weekBody.innerHTML += `<tr class="border-b border-slate-800/50 ${isLast ? 'bg-blue-500/10' : 'hover:bg-slate-800/40'}">
-    <td class="py-2.5 pl-2 ${isLast ? 'font-semibold text-blue-400' : 'text-gray-300'}">${w.week}${isLast ? ' <span class="ml-1 text-xs font-normal text-blue-400/80">本周</span>' : ''}</td>
-    <td class="text-center py-2.5 ${isLast ? 'font-semibold text-blue-400' : 'text-gray-400'}">${w.days}</td>
-    <td class="text-right py-2.5">
-      <div class="font-semibold ${isLast ? 'text-blue-400' : 'text-blue-400'}">${w.avg_total_milk || '-'}${changeHtml}</div>
-      <div class="w-20 h-1 bg-slate-700/50 rounded-full mt-1 ml-auto overflow-hidden"><div class="h-full bg-blue-500 rounded-full" style="width:${barWidth}%"></div></div>
-    </td>
-    <td class="text-right py-2.5 ${isLast ? 'text-blue-300' : 'text-gray-400'}">${w.avg_formula || '-'}</td>
-    <td class="text-right py-2.5 ${isLast ? 'text-blue-300' : 'text-gray-400'}">${w.avg_bottle_breast || '-'}</td>
-    <td class="text-right py-2.5 ${isLast ? 'text-blue-300' : 'text-gray-400'}">${w.avg_breast_min || '-'}</td>
-    <td class="text-right py-2.5 ${isLast ? 'text-blue-300' : 'text-gray-400'}">${w.avg_diaper || '-'}</td>
-    <td class="text-right py-2.5 pr-2 ${isLast ? 'text-blue-300' : 'text-gray-400'}">${w.avg_supplement || '-'}</td>
-  </tr>`;
+  const ringCls = isLast ? 'border-blue-500/40 bg-blue-500/5' : 'border-slate-700/40';
+  const labelCls = isLast ? 'text-blue-400' : 'text-gray-300';
+  const valCls = isLast ? 'text-blue-300' : 'text-gray-400';
+
+  weekGrid.innerHTML += `<div class="rounded-xl border ${ringCls} p-4 ${isLast ? 'ring-1 ring-blue-500/30' : ''}">
+    <div class="flex items-center justify-between mb-3">
+      <div class="flex items-center gap-2">
+        <span class="font-semibold ${labelCls}">${w.week}</span>
+        ${isLast ? '<span class="text-xs px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-400">本周</span>' : ''}
+      </div>
+      <span class="text-xs text-gray-500">${w.days}天</span>
+    </div>
+    <div class="mb-3">
+      <div class="flex items-baseline gap-1.5">
+        <span class="text-2xl font-bold ${labelCls}">${w.avg_total_milk || '-'}</span>
+        <span class="text-xs text-gray-500">ml/天</span>
+        ${changeHtml}
+      </div>
+      <div class="text-xs text-gray-500 mt-0.5">日均总奶量</div>
+      <div class="w-full h-1.5 bg-slate-700/40 rounded-full mt-2 overflow-hidden"><div class="h-full bg-blue-500 rounded-full" style="width:${barWidth}%"></div></div>
+    </div>
+    <div class="grid grid-cols-2 gap-x-3 gap-y-2 text-xs">
+      <div class="flex items-center justify-between"><span class="text-gray-500">🍼配方奶</span><span class="${valCls} font-medium">${w.avg_formula || '-'}<span class="text-gray-600 ml-0.5">ml</span></span></div>
+      <div class="flex items-center justify-between"><span class="text-gray-500">🥛瓶喂母乳</span><span class="${valCls} font-medium">${w.avg_bottle_breast || '-'}<span class="text-gray-600 ml-0.5">ml</span></span></div>
+      <div class="flex items-center justify-between"><span class="text-gray-500">🤱亲喂</span><span class="${valCls} font-medium">${w.avg_breast_min || '-'}<span class="text-gray-600 ml-0.5">min</span></span></div>
+      <div class="flex items-center justify-between"><span class="text-gray-500">👶尿布</span><span class="${valCls} font-medium">${w.avg_diaper || '-'}<span class="text-gray-600 ml-0.5">次</span></span></div>
+      <div class="flex items-center justify-between"><span class="text-gray-500">💊补剂</span><span class="${valCls} font-medium">${w.avg_supplement || '-'}<span class="text-gray-600 ml-0.5">次</span></span></div>
+    </div>
+  </div>`;
 });
 
 // === Weekly average charts ===
