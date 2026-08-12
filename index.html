@@ -207,12 +207,13 @@ body { background: var(--bg); color: var(--text); transition: background 0.3s, c
     <div class="card p-5">
       <h2 class="text-lg font-semibold mb-1">📊 每周日均趋势</h2>
       <p class="text-sm text-gray-400 mb-4">按自然周聚合，展示各周日均数据的变化趋势</p>
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div><h3 class="text-sm font-medium text-gray-300 mb-2">🍼 配方奶周均（ml/天）</h3><canvas id="weekFormulaChart"></canvas></div>
-        <div><h3 class="text-sm font-medium text-gray-300 mb-2">🥛 瓶喂母乳周均（ml/天）</h3><canvas id="weekBottleChart"></canvas></div>
-        <div><h3 class="text-sm font-medium text-gray-300 mb-2">🤱 母乳亲喂周均（min/天）</h3><canvas id="weekBreastChart"></canvas></div>
-        <div><h3 class="text-sm font-medium text-gray-300 mb-2">👶 换尿布周均（次/天）</h3><canvas id="weekDiaperChart"></canvas></div>
-        <div><h3 class="text-sm font-medium text-gray-300 mb-2">💊 营养补剂周均（次/天）</h3><canvas id="weekSupplementChart"></canvas></div>
+      <div id="weekChartTabs" class="flex flex-wrap gap-2 mb-4"></div>
+      <div id="weekChartPanels">
+        <div class="week-chart-panel" data-key="formula"><h3 class="text-sm font-medium text-gray-300 mb-2">🍼 配方奶周均（ml/天）</h3><canvas id="weekFormulaChart"></canvas></div>
+        <div class="week-chart-panel hidden" data-key="bottle"><h3 class="text-sm font-medium text-gray-300 mb-2">🥛 瓶喂母乳周均（ml/天）</h3><canvas id="weekBottleChart"></canvas></div>
+        <div class="week-chart-panel hidden" data-key="breast"><h3 class="text-sm font-medium text-gray-300 mb-2">🤱 母乳亲喂周均（min/天）</h3><canvas id="weekBreastChart"></canvas></div>
+        <div class="week-chart-panel hidden" data-key="diaper"><h3 class="text-sm font-medium text-gray-300 mb-2">👶 换尿布周均（次/天）</h3><canvas id="weekDiaperChart"></canvas></div>
+        <div class="week-chart-panel hidden" data-key="supplement"><h3 class="text-sm font-medium text-gray-300 mb-2">💊 营养补剂周均（次/天）</h3><canvas id="weekSupplementChart"></canvas></div>
       </div>
     </div>
 
@@ -628,6 +629,35 @@ new Chart(document.getElementById('weekSupplementChart'), {
     borderRadius: 6
   }]},
   options: { ...weekChartOpts, scales: { ...weekChartOpts.scales, y: { beginAtZero: true, ticks: { stepSize: 1 } } } }
+});
+
+// === Weekly chart tab switcher ===
+const weekChartTabData = [
+  { key: 'formula', label: '🍼 配方奶' },
+  { key: 'bottle', label: '🥛 瓶喂母乳' },
+  { key: 'breast', label: '🤱 亲喂' },
+  { key: 'diaper', label: '👶 尿布' },
+  { key: 'supplement', label: '💊 补剂' },
+];
+const weekChartTabsEl = document.getElementById('weekChartTabs');
+const weekChartPanels = document.querySelectorAll('.week-chart-panel');
+const weekChartInstances = {};
+weekChartTabData.forEach((t, i) => {
+  const btn = document.createElement('button');
+  btn.className = 'btn-tab text-sm px-3 py-1.5 rounded-lg' + (i === 0 ? ' active text-white' : ' text-gray-400');
+  btn.textContent = t.label;
+  btn.addEventListener('click', () => {
+    weekChartTabsEl.querySelectorAll('.btn-tab').forEach(b => { b.classList.remove('active', 'text-white'); b.classList.add('text-gray-400'); });
+    btn.classList.add('active', 'text-white');
+    btn.classList.remove('text-gray-400');
+    weekChartPanels.forEach(p => p.classList.add('hidden'));
+    const panel = document.querySelector('.week-chart-panel[data-key="' + t.key + '"]');
+    panel.classList.remove('hidden');
+    const canvas = panel.querySelector('canvas');
+    const chart = Chart.getChart(canvas);
+    if (chart) chart.resize();
+  });
+  weekChartTabsEl.appendChild(btn);
 });
 
 // === Timeline view ===
