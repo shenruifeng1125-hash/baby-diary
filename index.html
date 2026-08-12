@@ -386,33 +386,34 @@ const arrowFollowPlugin = {
 Chart.register(arrowFollowPlugin);
 
 function createDailyChart(canvasId, label, data, avgData, color, yOptions) {
-  return new Chart(document.getElementById(canvasId), {
+  const zeroData = data.map(() => 0);
+  const chart = new Chart(document.getElementById(canvasId), {
     type: 'bar',
     data: {
       labels: labels,
       datasets: [
         {
           label: label,
-          data: data,
+          data: zeroData,
           backgroundColor: color,
           borderRadius: 4,
-          animation: { duration: 1000, easing: 'easeOutQuart', y: { from: 0 } }
+          animation: { duration: 1000, easing: 'easeOutQuart' }
         },
         {
           type: 'line',
           label: '7日平均',
-          data: avgData,
+          data: zeroData,
           borderColor: '#60a5fa',
           borderWidth: 2,
           pointRadius: 0,
           tension: 0.4,
-          animation: { x: { type: 'number', duration: 1400, from: NaN, easing: 'easeOutQuart' }, duration: 1400 }
+          animation: { x: { type: 'number', duration: 1400, from: NaN, easing: 'easeOutQuart' }, y: { duration: 1000, from: 0, easing: 'easeOutQuart' }, duration: 1400 }
         }
       ]
     },
     options: {
       responsive: true,
-      animation: { duration: 1400, easing: 'easeOutQuart' },
+      animation: { duration: 1000, easing: 'easeOutQuart' },
       plugins: {
         legend: { display: true },
         arrowFollow: { enabled: true, color: '#60a5fa', datasetIndex: 1 }
@@ -420,6 +421,15 @@ function createDailyChart(canvasId, label, data, avgData, color, yOptions) {
       scales: { x: xAxisOpts, y: yOptions }
     }
   });
+  // Set real data after chart is rendered with zeros, triggering rise-from-0 animation
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      chart.data.datasets[0].data = data;
+      chart.data.datasets[1].data = avgData;
+      chart.update();
+    });
+  });
+  return chart;
 }
 
 const dailyCharts = { formula: null, bottle: null, breast: null, diaper: null, supplement: null };
@@ -641,7 +651,7 @@ const weekLabels = weeks.map(w => w.week);
 const weekChartOpts = {
   responsive: true,
   plugins: { legend: { display: false } },
-  animation: { duration: 1000, easing: 'easeOutQuart', y: { from: 0 } },
+  animation: { duration: 1000, easing: 'easeOutQuart' },
   scales: {
     x: { ticks: { maxRotation: 0 } },
     y: { beginAtZero: true }
@@ -649,17 +659,26 @@ const weekChartOpts = {
 };
 
 function createWeekChart(canvasId, label, data, color, yOptions) {
-  return new Chart(document.getElementById(canvasId), {
+  const zeroData = data.map(() => 0);
+  const chart = new Chart(document.getElementById(canvasId), {
     type: 'bar',
     data: { labels: weekLabels, datasets: [{
       label: label,
-      data: data,
+      data: zeroData,
       backgroundColor: color,
       borderRadius: 6,
-      animation: { duration: 1000, easing: 'easeOutQuart', y: { from: 0 } }
+      animation: { duration: 1000, easing: 'easeOutQuart' }
     }]},
     options: { ...weekChartOpts, scales: { ...weekChartOpts.scales, ...yOptions } }
   });
+  // Set real data after chart is rendered with zeros, triggering rise-from-0 animation
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      chart.data.datasets[0].data = data;
+      chart.update();
+    });
+  });
+  return chart;
 }
 
 const weekCharts = { formula: null, bottle: null, breast: null, diaper: null, supplement: null };
