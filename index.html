@@ -470,7 +470,8 @@ pieFiltered.forEach(d => {
 // === Weekly stats cards ===
 const weekGrid = document.getElementById('weekCardGrid');
 const maxMilk = Math.max(...weeks.map(w => w.avg_total_milk || 0), 1);
-[...weeks].reverse().forEach((w) => {
+const reversedWeeks = [...weeks].reverse();
+reversedWeeks.forEach((w, rIdx) => {
   const idx = weeks.indexOf(w);
   const prev = weeks[idx - 1];
   const changePct = prev && prev.avg_total_milk ? Math.round((w.avg_total_milk - prev.avg_total_milk) / prev.avg_total_milk * 100) : null;
@@ -482,8 +483,9 @@ const maxMilk = Math.max(...weeks.map(w => w.avg_total_milk || 0), 1);
   const ringCls = isLast ? 'border-blue-500/40 bg-blue-500/5' : 'border-slate-700/40';
   const labelCls = isLast ? 'text-blue-400' : 'text-gray-300';
   const valCls = isLast ? 'text-blue-300' : 'text-gray-400';
+  const hiddenCls = rIdx > 0 ? 'week-card-extra hidden' : '';
 
-  weekGrid.innerHTML += `<div class="rounded-xl border ${ringCls} p-4 ${isLast ? 'ring-1 ring-blue-500/30' : ''}">
+  weekGrid.innerHTML += `<div class="rounded-xl border ${ringCls} p-4 ${isLast ? 'ring-1 ring-blue-500/30' : ''} ${hiddenCls}">
     <div class="flex items-center justify-between mb-3">
       <div class="flex items-center gap-2">
         <span class="font-semibold ${labelCls}">${w.week}</span>
@@ -509,6 +511,27 @@ const maxMilk = Math.max(...weeks.map(w => w.avg_total_milk || 0), 1);
     </div>
   </div>`;
 });
+// Toggle button for historical weeks
+if (reversedWeeks.length > 1) {
+  const extraCount = reversedWeeks.length - 1;
+  const toggleHtml = `<div class="col-span-full text-center mt-1">
+    <button id="weekToggleBtn" class="text-sm text-blue-400 hover:text-blue-300 transition-colors inline-flex items-center gap-1">
+      <span id="weekToggleText">展开历史 ${extraCount} 周</span>
+      <svg id="weekToggleArrow" class="w-4 h-4 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+    </button>
+  </div>`;
+  weekGrid.insertAdjacentHTML('beforeend', toggleHtml);
+  const btn = document.getElementById('weekToggleBtn');
+  const txt = document.getElementById('weekToggleText');
+  const arrow = document.getElementById('weekToggleArrow');
+  btn.addEventListener('click', () => {
+    const extras = weekGrid.querySelectorAll('.week-card-extra');
+    const isHidden = extras[0].classList.contains('hidden');
+    extras.forEach(el => el.classList.toggle('hidden'));
+    txt.textContent = isHidden ? '收起历史' : `展开历史 ${extraCount} 周`;
+    arrow.style.transform = isHidden ? 'rotate(180deg)' : 'rotate(0deg)';
+  });
+}
 
 // === Weekly average charts ===
 const weekLabels = weeks.map(w => w.week);
